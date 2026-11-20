@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85502d7b62e7cf4439f68de3d9faf777, type: 3}
+  m_Name: DefaultBattle
+  m_EditorClassIdentifier: Assembly-CSharp::StarFall.BattleConfig
+  duration: 180
+  arenaSize: {x: 42, y: 26}
+  resultDisplaySeconds: 4
+  character: {fileID: 11400000, guid: 82d53281fb88cbb428dcb5c9c0bfa8ab, type: 2}
+  staff: {fileID: 11400000, guid: 7cbeabc6ac59d34449831141341902ee, type: 2}
+  gem: {fileID: 11400000, guid: 9611807632d352249af55637c3dfd52e, type: 2}
+  playerRadius: 0.55
+  hurtGraceSeconds: 0.65
+  soulTravelSpeed: 9
+  enemySoulValue: 1
+  levelExperience: 03000000040000000500000006000000080000000a0000000c000000
+  enemyHealth: 24
+  enemyElementResistancePercent: 0
+  enemySpeed: 2.4
+  enemyRadius: 0.6
+  contactDamage: 10
+  contactElement: 0
+  contactCooldown: 1
+  initialSpawnInterval: 1.2
+  finalSpawnInterval: 0.45
+  maxEnemies: 30
+  enableObstacles: 1
+  obstacles:
+  - {x: -8, y: -3, z: 3, w: 5}
+  - {x: 7, y: 4, z: 4, w: 3}
+  - {x: -6, y: 7, z: 5, w: 2}
+  - {x: 9, y: -7, z: 4, w: 2}
+  enableBossEncounters: 1
+  miniBossTime: 60
+  miniBossHealth: 120
+  miniBossSpeed: 1.9
+  miniBossRadius: 1
+  miniBossSoulValue: 6
+  finalBossHealth: 360
+  finalBossSpeed: 1.4
+  finalBossRadius: 1.5
+  finalBossFireResistance: 20
+  bossAttackInterval: 5
+  bossWarningTime: 1.4
+  chestInteractionRadius: 2
