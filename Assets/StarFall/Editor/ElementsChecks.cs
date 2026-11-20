@@ -152,6 +152,7 @@ namespace StarFall.Editor
                 {
                     builds.AddExperience(builds.ExperienceRequired);
                     if (choice == 2 || choice == 5) check(builds.Offers.Any(BuildCatalog.IsResonance), "Third and sixth choices guarantee compatible resonance opportunities");
+                    check(builds.Offers.Any(id => !BuildCatalog.IsResonance(id)), "Expanded resonance pool still allows deferring a combination");
                     foreach (var id in builds.Offers)
                         check(BuildCatalog.IsResonance(id) ? ElementCatalog.Compatible((DamageElement)e, BuildCatalog.ResonanceElement(id)) : BuildCatalog.ExclusiveElement(id) == DamageElement.Physical || BuildCatalog.ExclusiveElement(id) == (DamageElement)e, "Draft contains only usable elemental cards");
                     var selected = choice == 5 ? builds.Offers.First(BuildCatalog.IsResonance) : builds.Offers.First(id => !BuildCatalog.IsResonance(id));

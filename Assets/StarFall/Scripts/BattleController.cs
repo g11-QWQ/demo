@@ -177,7 +177,7 @@ namespace StarFall
             var enemy = enemyPool.Count > 0 ? enemyPool.Pop() : Instantiate(enemyPrefab, transform);
             foreach (var bullet in projectiles) bullet.Hits.Remove(enemy);
             foreach (var zone in mud) zone.Dwell.Remove(enemy);
-            foreach (var effect in fusions) effect.WaveHits.Remove(enemy);
+            foreach (var effect in fusions) { effect.WaveHits.Remove(enemy); effect.Conductivity.Remove(enemy); }
             float radius = kind == EnemyKind.Normal ? config.enemyRadius : kind == EnemyKind.MiniBoss ? config.miniBossRadius : config.finalBossRadius;
             enemy.Damaged = (point, amount, element) => interfaceView?.ShowDamage(point, amount, element);
             enemy.Spawn(navigation.ClosestFree(position, radius), config, kind);

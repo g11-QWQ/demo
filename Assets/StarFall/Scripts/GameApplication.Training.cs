@@ -36,10 +36,11 @@ namespace StarFall
         public void ToggleTrainingInvulnerability() { if (TestMode && !SaveBlocked) Session.Invulnerable = !Session.Invulnerable; }
         public void StartShowcase(int index)
         {
+            if (index < 0 || index >= FusionCatalog.Primary.Length) return;
             if (SaveBlocked || SettingsOpen || (!TestMode && Session.State != MatchState.MainMenu && Session.State != MatchState.HomeBase)) return;
             TestMode = true;
-            TestResonance = index == 0 ? DamageElement.Lightning : index == 1 ? DamageElement.Wind : DamageElement.Ocean;
-            UI.CloseWorkshop(); RestartTraining(index == 2 ? 2 : 0); Session.Invulnerable = true;
+            TestResonance = FusionCatalog.Secondary[index];
+            UI.CloseWorkshop(); RestartTraining((int)FusionCatalog.Primary[index] - 1); Session.Invulnerable = true;
             Battle.TrainingTargets(); Battle.TrainingChargeFusion();
         }
         public void TrainingUpgrade() { if (TestMode && !SaveBlocked) Session.TrainingUpgrade(); }

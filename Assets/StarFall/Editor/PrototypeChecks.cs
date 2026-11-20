@@ -223,6 +223,8 @@ namespace StarFall.Editor
                         StageFourChecks.Run(app, Check, Capture, Click);
                         ElementsChecks.Run(app, Check, Capture, Click);
                         FusionShowcaseChecks.Run(app, Check, Capture);
+                        RemainingFusionChecks.Run(app, Check, Capture, Click);
+                        app.TestResonance = DamageElement.Physical;
                         app.StartTraining();
                         InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Digit3));
                         inputStartFrame = Time.frameCount; phase = 40; break;

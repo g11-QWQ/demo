@@ -34,11 +34,7 @@ namespace StarFall
             }
             return gem;
         }
-        public static bool Compatible(DamageElement main, DamageElement other) =>
-            (main == DamageElement.Fire && (other == DamageElement.Lightning || other == DamageElement.Wind))
-            || (other == DamageElement.Fire && (main == DamageElement.Lightning || main == DamageElement.Wind))
-            || (main == DamageElement.Wind && other == DamageElement.Ocean) || (main == DamageElement.Ocean && other == DamageElement.Wind)
-            || (main == DamageElement.Ocean && other == DamageElement.Earth) || (main == DamageElement.Earth && other == DamageElement.Ocean);
+        public static bool Compatible(DamageElement main, DamageElement other) => FusionCatalog.Get(main, other) != FusionKind.None;
         public static string ResonanceName(DamageElement main, DamageElement other) => !Compatible(main, other) ? "无共鸣"
             : FusionCatalog.Get(main, other) != FusionKind.None ? FusionCatalog.Name(FusionCatalog.Get(main, other)) : "泥沼";
     }

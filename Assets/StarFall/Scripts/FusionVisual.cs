@@ -3,7 +3,7 @@ using UnityEngine;
 namespace StarFall
 {
     // Procedural ribbons are deliberately airy: actors and hostile telegraphs remain visible.
-    public sealed class FusionVisual : MonoBehaviour
+    public sealed partial class FusionVisual : MonoBehaviour
     {
         private readonly LineRenderer[] ribbons = new LineRenderer[26];
         private MaterialPropertyBlock block;
@@ -46,7 +46,8 @@ namespace StarFall
             float fade = Mathf.Clamp01((lifetime - age) / 0.45f);
             if (kind == FusionKind.Judgment) Judgment(age, fade);
             else if (kind == FusionKind.FireTornado) Tornado(age, fade, direction);
-            else Vortex(age, fade, direction);
+            else if (kind == FusionKind.OceanVortex) Vortex(age, fade, direction);
+            else Extended(kind, age, fade, direction);
             for (int i = used; i < ribbons.Length; i++) ribbons[i].enabled = false;
         }
         private void Judgment(float age, float fade)
