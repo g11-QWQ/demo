@@ -37,11 +37,11 @@ namespace StarFall
             new BuildDefinition(BuildId.OceanPressure, "深水压力", "海洋专属", 3, "对已受减速或禁锢的目标\n每级增加15%直接伤害。"),
             new BuildDefinition(BuildId.EarthCore, "岩芯", "大地专属", 3, "岩枪基础伤害每级增加4。"),
             new BuildDefinition(BuildId.EarthMark, "破甲印记", "大地专属", 3, "岩枪命中叠加印记，最多3层。\n每层使后续岩枪伤害增加5%/10%/15%，持续4秒。"),
-            new BuildDefinition(BuildId.ResFire, "火焰共鸣", "元素共鸣", 1, "雷电：解锁天罚烙印。\n风：解锁焚风龙卷。\n有效命中充能，满能量施法释放。"),
-            new BuildDefinition(BuildId.ResLightning, "雷电共鸣", "元素共鸣", 1, "火焰：解锁天罚烙印。\n锁定目标、蓄势落雷和火焰冲击。\n有效命中充能，满能量施法释放。"),
-            new BuildDefinition(BuildId.ResWind, "风之共鸣", "元素共鸣", 1, "火焰：解锁焚风龙卷。\n海洋：解锁深海涡旋。\n有效命中充能，满能量施法释放。"),
-            new BuildDefinition(BuildId.ResOcean, "海洋共鸣", "元素共鸣", 1, "风：解锁深海涡旋，充能释放。\n大地：每第三次施法生成泥沼。\n每局只能选择一种共鸣。"),
-            new BuildDefinition(BuildId.ResEarth, "大地共鸣", "元素共鸣", 1, "海洋：每第三次施法命中生成泥沼，\n减速并短暂禁锢停留者。\n每局只能选择一种共鸣。")
+            new BuildDefinition(BuildId.ResFire, "火焰共鸣", "元素共鸣", 1, "雷：天罚烙印；风：焚风龙卷\n海洋：沸海蒸爆；大地：熔岩喷发\n命中充能，满能量施法释放。"),
+            new BuildDefinition(BuildId.ResLightning, "雷电共鸣", "元素共鸣", 1, "火：天罚烙印；风：雷暴锋面\n海洋：导电潮池；大地：磁轨岩枪\n命中充能，满能量施法释放。"),
+            new BuildDefinition(BuildId.ResWind, "风之共鸣", "元素共鸣", 1, "火：焚风龙卷；雷：雷暴锋面\n海洋：深海涡旋；大地：碎岩钻风\n命中充能，满能量施法释放。"),
+            new BuildDefinition(BuildId.ResOcean, "海洋共鸣", "元素共鸣", 1, "火：沸海蒸爆；雷：导电潮池\n风：深海涡旋；大地：沉沦石棺\n命中充能，满能量施法释放。"),
+            new BuildDefinition(BuildId.ResEarth, "大地共鸣", "元素共鸣", 1, "火：熔岩喷发；雷：磁轨岩枪\n风：碎岩钻风；海洋：沉沦石棺\n海洋组合同时保留泥沼效果。")
         });
 
         public static BuildDefinition Get(BuildId id)
@@ -65,6 +65,7 @@ namespace StarFall
         }
     }
 }
+
 
 
 

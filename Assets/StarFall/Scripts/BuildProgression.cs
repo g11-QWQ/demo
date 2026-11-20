@@ -89,6 +89,12 @@ namespace StarFall
                 int index = random.Next(eligible.Count);
                 offers.Add(eligible[index]); eligible.RemoveAt(index);
             }
+            // More compatible pairs must not force the player to bind a resonance.
+            if (offers.Count > 0 && offers.TrueForAll(BuildCatalog.IsResonance))
+            {
+                var regular = eligible.FindAll(id => !BuildCatalog.IsResonance(id));
+                if (regular.Count > 0) offers[offers.Count - 1] = regular[random.Next(regular.Count)];
+            }
             Revision++;
         }
         private bool MatchesElement(BuildId id) => BuildCatalog.ExclusiveElement(id) == DamageElement.Physical || BuildCatalog.ExclusiveElement(id) == Element;

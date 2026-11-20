@@ -23,20 +23,25 @@ namespace StarFall
             for (int i = 0; i < 5; i++)
             {
                 int index = i; var element = (DamageElement)(i + 1);
-                gemButtons[i] = Button(workshop.transform, "Gem" + i, "", new Vector2(-400, 205 - i * 66), new Vector2(320, 60), () => app.SelectGem(index));
-                gemCaptions[i] = Label(gemButtons[i].transform, "Element", "", Vector2.zero, new Vector2(290, 56), 23, ElementCatalog.ColorFor(element));
-                Label(workshop.transform, "Spell" + i, ElementCatalog.Spells[i + 1] + "  ·  " + ElementCatalog.Descriptions[i + 1], new Vector2(180, 205 - i * 66), new Vector2(780, 60), 20, Color.white, TextAnchor.MiddleLeft);
+                gemButtons[i] = Button(workshop.transform, "Gem" + i, "", new Vector2(-400, 218 - i * 52), new Vector2(320, 46), () => app.SelectGem(index));
+                gemCaptions[i] = Label(gemButtons[i].transform, "Element", "", Vector2.zero, new Vector2(290, 44), 23, ElementCatalog.ColorFor(element));
+                Label(workshop.transform, "Spell" + i, ElementCatalog.Spells[i + 1] + "  ·  " + ElementCatalog.Descriptions[i + 1], new Vector2(180, 218 - i * 52), new Vector2(780, 46), 20, Color.white, TextAnchor.MiddleLeft);
             }
-            Label(workshop.transform, "ResonanceTitle", "试炼预装共鸣（正式对局通过升级获得）", new Vector2(0, -108), new Vector2(1120, 40), 20, Muted);
+            Label(workshop.transform, "ResonanceTitle", "试炼预装共鸣（正式对局通过升级获得）", new Vector2(0, -34), new Vector2(1120, 40), 20, Muted);
             for (int i = 0; i < 6; i++)
             {
                 int index = i;
-                resonanceButtons[i] = Button(workshop.transform, "Resonance" + i, "", new Vector2(-475 + i * 190, -154), new Vector2(178, 46), () => { app.TestResonance = (DamageElement)index; RefreshWorkshop(); });
+                resonanceButtons[i] = Button(workshop.transform, "Resonance" + i, "", new Vector2(-475 + i * 190, -78), new Vector2(178, 46), () => { app.TestResonance = (DamageElement)index; RefreshWorkshop(); });
                 resonanceCaptions[i] = Label(resonanceButtons[i].transform, "Name", "", Vector2.zero, new Vector2(170, 44), 18, i == 0 ? Color.white : ElementCatalog.ColorFor((DamageElement)i));
             }
-            Button(workshop.transform, "JudgmentDemo", "天罚烙印 · 一键试打", new Vector2(-400, -211), new Vector2(360, 42), () => app.StartShowcase(0));
-            Button(workshop.transform, "TornadoDemo", "焚风龙卷 · 一键试打", new Vector2(0, -211), new Vector2(360, 42), () => app.StartShowcase(1));
-            Button(workshop.transform, "VortexDemo", "深海涡旋 · 一键试打", new Vector2(400, -211), new Vector2(360, 42), () => app.StartShowcase(2));
+            for (int i = 0; i < FusionCatalog.Primary.Length; i++)
+            {
+                int index = i;
+                var kind = FusionCatalog.Get(FusionCatalog.Primary[i], FusionCatalog.Secondary[i]);
+                var caption = FusionCatalog.Name(kind) + "\n" + ElementCatalog.Names[(int)FusionCatalog.Primary[i]] + "＋" + ElementCatalog.Names[(int)FusionCatalog.Secondary[i]] + " · 试打";
+                var demo = Button(workshop.transform, "FusionDemo" + i, caption, new Vector2(-464 + (i % 5) * 232, -143 - (i / 5) * 57), new Vector2(220, 50), () => app.StartShowcase(index));
+                demo.GetComponentInChildren<Text>().fontSize = 17;
+            }
             workshopStatus = Label(workshop.transform, "Status", "", new Vector2(0, -245), new Vector2(1150, 48), 17, Cyan);
             Button(workshop.transform, "Close", "返回", new Vector2(-400, -306), new Vector2(330, 58), () => CloseWorkshop());
             Button(workshop.transform, "Trial", "60秒快速试炼", new Vector2(0, -306), new Vector2(360, 58), () => app.StartTraining(), true);
@@ -93,7 +98,7 @@ namespace StarFall
             {
                 bool available = i == 0 || ElementCatalog.Compatible(element, (DamageElement)i);
                 resonanceButtons[i].interactable = available;
-                resonanceCaptions[i].text = (i == 0 ? "不装共鸣" : ElementCatalog.Names[i] + "共鸣") + (app.TestResonance == (DamageElement)i ? " ✓" : available ? "" : " · 未开放");
+                resonanceCaptions[i].text = (i == 0 ? "不装共鸣" : ElementCatalog.Names[i] + "共鸣") + (app.TestResonance == (DamageElement)i ? " ✓" : available ? "" : " · 同元素");
             }
             workshopStatus.text = !string.IsNullOrEmpty(app.Progress.Error) ? app.Progress.Error : ElementCatalog.ResonanceName(element, app.TestResonance) + " · 试炼使用基础属性，默认无敌；不产生永久收益。";
         }
@@ -113,6 +118,10 @@ namespace StarFall
             trainingBar.SetActive(show);
             if (show) trainingHint.text = "测试模式 · 无永久收益 · " + app.Battle.ActiveGem.displayName + " / " + ElementCatalog.ResonanceName(app.Battle.ActiveGem.element, app.Session.Builds.Resonance)
                 + (app.Session.Invulnerable ? " · 无敌开启" : " · 正常受伤") + " · 切换宝石或共鸣将重开本局";
+            if (show && app.Battle.TrainingShowcase && app.Battle.CurrentFusion != FusionKind.None)
+                trainingHint.text = "试打 · 无永久收益 · " + FusionCatalog.Name(app.Battle.CurrentFusion) + "：" + FusionCatalog.Descriptions[(int)app.Battle.CurrentFusion - 1]
+                    + (app.Session.Invulnerable ? " · 无敌" : " · 正常受伤");
         }
     }
 }
+

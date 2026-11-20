@@ -13,6 +13,7 @@ namespace StarFall
             public EnemyController Target; public int Generation; public bool Struck;
             public FusionVisual Visual;
             public readonly HashSet<EnemyController> WaveHits = new HashSet<EnemyController>();
+            public readonly Dictionary<EnemyController, int> Conductivity = new Dictionary<EnemyController, int>();
         }
         private readonly List<Fusion> fusions = new List<Fusion>();
         private readonly Stack<FusionVisual> fusionPool = new Stack<FusionVisual>();
@@ -38,7 +39,7 @@ namespace StarFall
             if (Mathf.Abs(fusionAim.x) > config.arenaSize.x / 2 || Mathf.Abs(fusionAim.z) > config.arenaSize.y / 2) return;
             var origin = player.Position;
             EnemyController target = null;
-            if (kind == FusionKind.Judgment)
+            if (kind == FusionKind.Judgment || kind == FusionKind.RailSpear)
             {
                 float nearest = ActiveGem.range;
                 foreach (var enemy in enemies)
@@ -54,10 +55,11 @@ namespace StarFall
             Vector3 destination = origin + Vector3.ClampMagnitude(fusionAim - origin, 12); destination.y = 0.08f;
             var groundOrigin = new Vector3(origin.x, 0.08f, origin.z);
             if (navigation.FirstWallHit(groundOrigin, destination, 0.25f, out float wall)) destination = Vector3.Lerp(groundOrigin, destination, Mathf.Max(0, wall - 0.02f));
-            var position = kind == FusionKind.Judgment ? target.Position : kind == FusionKind.FireTornado ? navigation.Move(groundOrigin, player.AimDirection * 0.8f, 0.25f) : destination;
+            bool moving = kind == FusionKind.FireTornado || kind == FusionKind.StormFront || kind == FusionKind.SandDrill;
+            var position = target != null ? target.Position : moving ? navigation.Move(groundOrigin, player.AimDirection * 0.8f, 0.25f) : destination;
             position.y = 0.08f;
             var effect = new Fusion { Kind = kind, Main = ActiveGem.element, Position = position, Direction = player.AimDirection,
-                Lifetime = kind == FusionKind.Judgment ? 1.35f : kind == FusionKind.FireTornado ? (ActiveGem.element == DamageElement.Fire ? 4.4f : 3.8f) : 3.9f,
+                Lifetime = kind == FusionKind.Judgment ? 1.35f : kind == FusionKind.FireTornado ? (ActiveGem.element == DamageElement.Fire ? 4.4f : 3.8f) : kind == FusionKind.OceanVortex ? 3.9f : ExtendedLifetime(kind),
                 Efficiency = FireEfficiency, Target = target, Generation = target != null ? target.Generation : 0, Tick = 0.35f };
             effect.Visual = AcquireFusionVisual(); effect.Visual.Draw(kind, 0, position, effect.Direction, effect.Lifetime);
             fusions.Add(effect); FusionEnergy = 0; FusionCastCount++; ResonanceTriggers++;
@@ -133,7 +135,7 @@ namespace StarFall
                         if (enemy.Health > 0) enemy.ApplyBurn(CombatMath.Damage(2, 1, effect.Efficiency, enemy.ResistanceFor(DamageElement.Fire)));
                     }
                 }
-                else
+                else if (effect.Kind == FusionKind.OceanVortex)
                 {
                     effect.Tick -= delta; bool tick = effect.Tick <= 0; if (tick) effect.Tick += 0.5f;
                     if (effect.Age < 3.2f)
@@ -159,6 +161,7 @@ namespace StarFall
                         }
                     }
                 }
+                else StepExtendedFusion(effect, delta);
                 effect.Visual.Draw(effect.Kind, effect.Age, effect.Position, effect.Direction, effect.Lifetime);
                 if (effect.Age >= effect.Lifetime) { effect.Visual.gameObject.SetActive(false); fusionPool.Push(effect.Visual); fusions.RemoveAt(i); }
             }
