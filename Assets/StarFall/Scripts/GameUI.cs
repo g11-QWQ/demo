@@ -61,12 +61,12 @@ namespace StarFall
             newGameButton = Button(layout, "NewGame", "新游戏", new Vector2(-320, -8), new Vector2(420, 64), app.NewGame, true);
             Button(layout, "Settings", "设置", new Vector2(-320, -88), new Vector2(420, 64), app.OpenSettings);
             Button(layout, "Quit", "退出", new Vector2(-320, -168), new Vector2(420, 64), app.Quit);
-            Label(layout, "Help", "WASD 移动   /   按住空格吸魂   /   ESC 暂停", new Vector2(-255, -257), new Vector2(550, 40), 17, Muted, TextAnchor.MiddleLeft);
+            Label(layout, "Help", "WASD 移动   /   按住空格吸魂   /   Q 终极 · ESC 暂停", new Vector2(-255, -257), new Vector2(550, 40), 17, Muted, TextAnchor.MiddleLeft);
 
             var diagram = Box(layout, "SurvivalCard", new Vector2(300, 5), new Vector2(420, 510));
             Image(diagram, "Card", Panel, Vector2.zero, new Vector2(420, 510));
             Label(diagram, "Protocol", "FIRE & SOUL / 01", new Vector2(0, 200), new Vector2(340, 42), 18, Muted);
-            Label(diagram, "Duration", "关底 03:00", new Vector2(0, 125), new Vector2(380, 90), 44, Color.white);
+            Label(diagram, "Duration", "关底 08:00", new Vector2(0, 125), new Vector2(380, 90), 44, Color.white);
             Image(diagram, "PlayerMark", Cyan, new Vector2(-25, 5), new Vector2(66, 66)).rectTransform.localEulerAngles = new Vector3(0, 0, 45);
             Image(diagram, "EnemyMarkA", Coral, new Vector2(105, 50), new Vector2(40, 40));
             Image(diagram, "EnemyMarkB", Coral, new Vector2(-125, -55), new Vector2(40, 40));
@@ -95,7 +95,7 @@ namespace StarFall
             soulText.rectTransform.anchorMin = soulText.rectTransform.anchorMax = Vector2.zero;
             castingText = Label(hud.transform, "Casting", "火球术 · 自动施法", new Vector2(0, 61), new Vector2(600, 40), 20, new Color(1, 0.75f, 0.3f));
             castingText.rectTransform.anchorMin = castingText.rectTransform.anchorMax = new Vector2(0.5f, 0);
-            var help = Label(hud.transform, "Controls", "WASD 移动    ·    鼠标瞄准    ·    按住空格吸魂（停止攻击）    ·    ESC 暂停", new Vector2(0, 25), new Vector2(1100, 40), 17, Muted);
+            var help = Label(hud.transform, "Controls", "WASD 移动    ·    鼠标瞄准    ·    按住空格吸魂（停止攻击）    ·    Q 终极 · ESC 暂停", new Vector2(0, 25), new Vector2(1100, 40), 17, Muted);
             help.rectTransform.anchorMin = help.rectTransform.anchorMax = new Vector2(0.5f, 0);
         }
 
@@ -272,8 +272,3 @@ namespace StarFall
         }
     }
 }
-
-
-
-
-

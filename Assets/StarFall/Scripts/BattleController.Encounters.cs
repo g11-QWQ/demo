@@ -10,14 +10,15 @@ namespace StarFall
         private Material encounterMaterial;
         private bool miniSpawned, miniDefeated, finalSpawned, pendingClear;
         private float bossAttackRemaining;
+        private int waveSpawns;
         private Vector3 rewardPosition;
-        private sealed class Warning { public GameObject Visual; public Vector3 Position; public float Remaining, Radius; public DamageElement Element; }
+        private sealed class Warning { public GameObject Visual; public Vector3 Position; public float Remaining, Radius; public DamageElement Element; public int Damage; }
         private readonly List<Warning> warnings = new List<Warning>();
         public EnemyController Boss { get; private set; }
         public int WarningCount => warnings.Count;
         public bool ChestAvailable => chest != null && session.State == MatchState.ClaimingReward;
         public Vector3 ChestPosition => rewardPosition;
-        public int NormalEnemyLimit => Mathf.Min(config.maxEnemies, StageTime < 60 ? 12 : StageTime < 120 ? 20 : 30);
+        public int NormalEnemyLimit => Mathf.Min(config.maxEnemies, config.enableEnemyRoles && (!Training || LongTraining) ? (session.Elapsed < 90 ? 14 : session.Elapsed < 180 ? 20 : session.Elapsed < 300 ? 26 : 30) : StageTime < 60 ? 12 : StageTime < 120 ? 20 : 30);
         public string EncounterObjective => session.FinalBossDefeated ? "靠近金色宝箱，按 E 获取通关之证" : Boss != null ? (Boss.Kind == EnemyKind.MiniBoss ? "小 Boss" : "关底 Boss") + $"  {Boss.Health:0}/{Boss.MaxHealth:0}" : miniDefeated ? "清理怪群，等待关底 Boss" : "迎战怪群与小 Boss";
 
         private void InitializeEncounters()
@@ -25,6 +26,7 @@ namespace StarFall
             navigation = new ArenaNavigation(config);
             miniSpawned = miniDefeated = finalSpawned = pendingClear = false;
             Boss = null; bossAttackRemaining = config.bossAttackInterval;
+            waveSpawns = 0;
             arenaVisuals = new GameObject("ArenaObstacles");
             arenaVisuals.transform.SetParent(transform, false);
             foreach (var box in navigation.Obstacles)
@@ -58,15 +60,25 @@ namespace StarFall
         private void StepEncounters(float delta)
         {
             if (!config.enableBossEncounters || TrainingShowcase) return;
-            if (!miniSpawned && session.Elapsed >= (Training ? 15 : config.miniBossTime)) { miniSpawned = true; SpawnEnemy(EnemyKind.MiniBoss); bossAttackRemaining = config.bossAttackInterval; }
+            if (!miniSpawned && session.Elapsed >= (Training && !LongTraining ? 15 : config.miniBossTime)) { miniSpawned = true; SpawnEnemy(EnemyKind.MiniBoss); bossAttackRemaining = config.bossAttackInterval; }
             if (!finalSpawned && miniDefeated && session.Elapsed >= session.Duration) { finalSpawned = true; ClearWarnings(); SpawnEnemy(EnemyKind.FinalBoss); bossAttackRemaining = config.bossAttackInterval; }
             for (int i = warnings.Count - 1; i >= 0; i--)
             {
                 var warning = warnings[i]; warning.Remaining -= delta;
                 if (warning.Remaining > 0) continue;
                 var offset = player.Position - warning.Position; offset.y = 0;
-                if (offset.magnitude <= warning.Radius + config.playerRadius && player.TryDamage(session, config, warning.Element == DamageElement.Physical ? 18 : 25, warning.Element)) audioService?.PlayHurt();
+                if (offset.magnitude <= warning.Radius + config.playerRadius && player.TryDamage(session, config, warning.Damage > 0 ? warning.Damage : warning.Element == DamageElement.Physical ? 18 : 25, warning.Element)) audioService?.PlayHurt();
                 warning.Visual.SetActive(false); Destroy(warning.Visual); warnings.RemoveAt(i);
+            }
+            foreach (var enemy in enemies)
+            {
+                if (enemy.Role != EnemyRole.Caster || enemy.RootRemaining > 0) continue;
+                enemy.RoleAttackRemaining -= delta;
+                if (enemy.RoleAttackRemaining > 0 || warnings.Count >= 24 || !navigation.ClearLine(enemy.Position, player.Position, 0)) continue;
+                enemy.RoleAttackRemaining = 4;
+                var position = player.Position; position.y = 0.025f;
+                warnings.Add(new Warning { Position = position, Radius = 1.1f, Remaining = 1.2f, Element = DamageElement.Ocean, Damage = 8,
+                    Visual = Shape("CasterWarning", PrimitiveType.Cylinder, position, new Vector3(2.2f, 0.02f, 2.2f), new Color(0.3f, 0.55f, 1), transform) });
             }
             if (Boss == null || session.State != MatchState.Playing) return;
             bossAttackRemaining -= delta;
@@ -113,5 +125,3 @@ namespace StarFall
         private void OnDestroy() { if (encounterMaterial != null) Destroy(encounterMaterial); if (activeGem != null) Destroy(activeGem); if (fusionMaterial != null) Destroy(fusionMaterial); }
     }
 }
-
-

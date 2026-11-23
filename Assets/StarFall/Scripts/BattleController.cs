@@ -33,7 +33,7 @@ namespace StarFall
         public int ShotsFired { get; private set; }
         public float ActiveSoulRadius => (config.character.soulCollectionRadius + permanentRadius) * (config.staff.soulCollectionMultiplier + staffCollectionBonus + 0.5f * session.Builds.Rank(BuildId.SoulAttraction));
         public float CollectionRadius => player != null && player.IsAbsorbing ? ActiveSoulRadius : config.PassiveSoulRadius + permanentRadius;
-        public float AttackFrequency => ActiveGem.attacksPerSecond * (1 + 0.2f * session.Builds.Rank(BuildId.SwiftCasting));
+        public float AttackFrequency => ActiveGem.attacksPerSecond * (1 + 0.025f * (session.Builds.Level - 1)) * (1 + 0.2f * session.Builds.Rank(BuildId.SwiftCasting)) * (session.Builds.Form == 3 ? 0.7f : 1) * (session.Builds.Specialization == 2 ? 0.9f : 1);
         public float MoveSpeed => config.playerSpeed + MoveSpeedBonus;
         private float MoveSpeedBonus => config.character.moveSpeed * 0.08f * session.Builds.Rank(BuildId.LightSteps);
         public float SoulTravelSpeed => config.soulTravelSpeed * (1 + 0.2f * session.Builds.Rank(BuildId.SoulAttraction));
@@ -48,7 +48,7 @@ namespace StarFall
             player.gameObject.SetActive(false);
         }
 
-        public void Begin(PermanentProgress progress = null, DamageElement? element = null, bool training = false)
+        public void Begin(PermanentProgress progress = null, DamageElement? element = null, bool training = false, bool fullLength = false)
         {
             Clear();
             permanentHealth = progress == null ? 0 : progress.ranks[0] * 10;
@@ -56,6 +56,7 @@ namespace StarFall
             permanentRadius = progress == null ? 0 : progress.ranks[2] * 0.2f;
             staffCollectionBonus = progress != null && progress.staff == 1 ? 0.75f : 0;
             InitializeSpell(element ?? (DamageElement)((progress == null ? 0 : progress.gemIndex) + 1), training);
+            LongTraining = training && fullLength;
             InitializeEncounters();
             player.ResetActor();
             player.gameObject.SetActive(true);
@@ -63,7 +64,7 @@ namespace StarFall
             if (aimMarker != null) aimMarker.gameObject.SetActive(true);
             shotRemaining = 0;
             spawnRemaining = 0.35f;
-            session.Start(training ? 60 : config.duration, config.playerHealth + permanentHealth, config.levelExperience, null, ActiveGem.element);
+            session.Start(training && !fullLength ? 60 : config.duration, config.playerHealth + permanentHealth, training && !fullLength ? new[] { 3, 4, 5, 6, 8, 10, 12 } : config.levelExperience, null, ActiveGem.element);
         }
 
         public void Clear()
@@ -87,7 +88,7 @@ namespace StarFall
             if (!active && player != null) player.SetAbsorbing(false, 0);
         }
 
-        public void Step(float delta, Vector2 movement, Vector3? aimPoint = null, bool absorb = false)
+        public void Step(float delta, Vector2 movement, Vector3? aimPoint = null, bool absorb = false, bool ultimate = false)
         {
             if (delta <= 0) return;
             if (session.State == MatchState.ClaimingReward) { interfaceView?.StepDamageNumbers(delta); player.Move(movement, delta, config, MoveSpeedBonus, navigation); return; }
@@ -97,14 +98,15 @@ namespace StarFall
             while (delta > 0.000001f && session.State == MatchState.Playing)
             {
                 float step = Mathf.Min(delta, 1f / 60);
-                Simulate(step, movement, aimPoint, absorb);
+                Simulate(step, movement, aimPoint, absorb, ultimate); ultimate = false;
                 delta -= step;
             }
         }
 
-        private void Simulate(float delta, Vector2 movement, Vector3? aimPoint, bool absorb)
+        private void Simulate(float delta, Vector2 movement, Vector3? aimPoint, bool absorb, bool ultimate)
         {
             interfaceView?.StepDamageNumbers(delta);
+            var previousPosition = player.Position;
             player.Move(movement, delta, config, MoveSpeedBonus, navigation);
             if (aimPoint.HasValue)
             {
@@ -113,19 +115,24 @@ namespace StarFall
                 if (aimMarker != null) aimMarker.position = new Vector3(aimPoint.Value.x, 0.08f, aimPoint.Value.z);
             }
             player.SetAbsorbing(absorb, ActiveSoulRadius);
+            SyncUltimateUnlock(); harmonyRemaining = Mathf.Max(0, harmonyRemaining - delta);
+            if (ultimate) TryReleaseUltimate();
             StepSpellEffects(delta);
             StepEncounters(delta);
             if (session.State != MatchState.Playing) return;
             spawnRemaining -= delta;
             if (spawnRemaining <= 0)
             {
-                if (!finalSpawned && enemies.Count < NormalEnemyLimit) SpawnEnemy();
+                int batch = config.enableEnemyRoles && (!Training || LongTraining) ? (session.Elapsed >= 300 ? 3 : session.Elapsed >= 150 ? 2 : 1) : 1;
+                for (int n = 0; n < batch && !finalSpawned && enemies.Count < NormalEnemyLimit; n++) SpawnEnemy();
                 spawnRemaining = Mathf.Lerp(config.initialSpawnInterval, config.finalSpawnInterval,
-                    Mathf.Floor(StageTime / 60) / 2);
+                    Mathf.Clamp01(StageTime / 180));
             }
 
             foreach (var enemy in enemies) enemy.Step(delta, player.Position, config, navigation);
             StepFusions(delta);
+            StepAttackLinks(delta);
+            StepLinkArts(delta, Vector3.Distance(previousPosition, player.Position));
             for (int i = enemies.Count - 1; i >= 0; i--)
             {
                 var enemy = enemies[i];
@@ -156,6 +163,15 @@ namespace StarFall
 
         private void SpawnEnemy(EnemyKind kind = EnemyKind.Normal)
         {
+            if (enemies.Count >= Mathf.Max(1, config.maxEnemies))
+            {
+                if (kind == EnemyKind.Normal) return;
+                // Reserve room for required bosses without kills, drops or extra actors.
+                int index = enemies.FindLastIndex(e => e.Kind == EnemyKind.Normal);
+                if (index < 0) return;
+                var retired = enemies[index]; enemies.RemoveAt(index);
+                retired.gameObject.SetActive(false); enemyPool.Push(retired);
+            }
             var half = config.arenaSize * 0.5f - Vector2.one * config.enemyRadius;
             Vector3 position = Vector3.zero;
             // Prefer a boundary far from the player; prevent enemies appearing on top of them.
@@ -176,11 +192,20 @@ namespace StarFall
                     player.Position.z >= 0 ? -half.y : half.y);
             var enemy = enemyPool.Count > 0 ? enemyPool.Pop() : Instantiate(enemyPrefab, transform);
             foreach (var bullet in projectiles) bullet.Hits.Remove(enemy);
+            attackMarks.Remove(enemy);
             foreach (var zone in mud) zone.Dwell.Remove(enemy);
             foreach (var effect in fusions) { effect.WaveHits.Remove(enemy); effect.Conductivity.Remove(enemy); }
             float radius = kind == EnemyKind.Normal ? config.enemyRadius : kind == EnemyKind.MiniBoss ? config.miniBossRadius : config.finalBossRadius;
             enemy.Damaged = (point, amount, element) => interfaceView?.ShowDamage(point, amount, element);
             enemy.Spawn(navigation.ClosestFree(position, radius), config, kind);
+            if (kind == EnemyKind.Normal && (!Training || LongTraining) && config.enableBossEncounters && config.enableEnemyRoles)
+            {
+                waveSpawns++;
+                var role = session.Elapsed >= 90 && waveSpawns % 18 == 0 ? EnemyRole.Elite
+                    : session.Elapsed >= 90 && waveSpawns % 7 == 0 ? EnemyRole.Caster : session.Elapsed >= 60 && waveSpawns % 5 == 0 ? EnemyRole.Charger : EnemyRole.Melee;
+                enemy.ConfigureWave(role, 1 + Mathf.Min(4, Mathf.Floor(session.Elapsed / 120)) * 0.08f, session.Elapsed >= config.miniBossTime ? 1 : 0);
+                enemy.transform.position = navigation.ClosestFree(enemy.Position, enemy.Radius);
+            }
             if (kind != EnemyKind.Normal) Boss = enemy;
             enemies.Add(enemy);
         }
@@ -212,7 +237,7 @@ namespace StarFall
         {
             if (!enemies.Remove(enemy)) return;
             if (enemy.Kind == EnemyKind.FinalBoss) { pendingClear = true; rewardPosition = enemy.Position; }
-            else DropSoul(enemy.Position, enemy.Kind == EnemyKind.MiniBoss ? config.miniBossSoulValue : config.enemySoulValue);
+            else DropSoul(enemy.Position, enemy.Kind == EnemyKind.MiniBoss ? config.miniBossSoulValue : config.enemySoulValue + enemy.SoulBonus);
             if (enemy.Kind == EnemyKind.MiniBoss) miniDefeated = true;
             if (Boss == enemy) Boss = null;
             enemy.gameObject.SetActive(false);
@@ -221,8 +246,3 @@ namespace StarFall
         }
     }
 }
-
-
-
-
-

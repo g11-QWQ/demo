@@ -43,9 +43,11 @@ namespace StarFall
                 demo.GetComponentInChildren<Text>().fontSize = 17;
             }
             workshopStatus = Label(workshop.transform, "Status", "", new Vector2(0, -245), new Vector2(1150, 48), 17, Cyan);
-            Button(workshop.transform, "Close", "返回", new Vector2(-400, -306), new Vector2(330, 58), () => CloseWorkshop());
-            Button(workshop.transform, "Trial", "60秒快速试炼", new Vector2(0, -306), new Vector2(360, 58), () => app.StartTraining(), true);
-            Button(workshop.transform, "BossTrial", "直接挑战 Boss", new Vector2(400, -306), new Vector2(330, 58), () => app.StartTraining(true));
+            Button(workshop.transform, "Close", "返回", new Vector2(-450, -306), new Vector2(280, 58), () => CloseWorkshop());
+            Button(workshop.transform, "Trial", "60秒快速试炼", new Vector2(-150, -306), new Vector2(280, 58), () => app.StartTraining(), true);
+            Button(workshop.transform, "BossTrial", "直接挑战 Boss", new Vector2(450, -306), new Vector2(280, 58), () => app.StartTraining(true));
+            var growth = Button(workshop.transform, "GrowthTrial", "完整成长试炼", new Vector2(150, -306), new Vector2(280, 58), app.StartGrowthTraining, true);
+            growth.GetComponentInChildren<Text>().fontSize = 22;
             workshop.SetActive(false);
 
             trainingBar = FullPanel("TrainingToolbar", Color.clear, false);
@@ -87,6 +89,8 @@ namespace StarFall
         public bool CloseWorkshop()
         {
             if (!WorkshopVisible) return false;
+            var growth = Button(workshop.transform, "GrowthTrial", "完整成长试炼", new Vector2(150, -306), new Vector2(280, 58), app.StartGrowthTraining, true);
+            growth.GetComponentInChildren<Text>().fontSize = 22;
             workshop.SetActive(false); ShowState(app.Session.State); return true;
         }
         public void RefreshWorkshop()
@@ -106,12 +110,13 @@ namespace StarFall
         {
             if (fusionHud != null)
             {
-                bool combined = app.Battle.CurrentFusion != FusionKind.None && (app.Session.State == MatchState.Playing || app.Session.State == MatchState.Paused);
+                bool combined = app.Session.State == MatchState.Playing || app.Session.State == MatchState.Paused;
                 fusionHud.SetActive(combined);
                 if (combined)
                 {
                     fusionFill.anchorMax = new Vector2(app.Battle.FusionEnergy / 100, 1);
-                    fusionText.text = FusionCatalog.Name(app.Battle.CurrentFusion) + (app.Battle.FusionEnergy >= 99.99f ? " · 就绪：瞄准场内施法释放" : $" · 能量 {app.Battle.FusionEnergy:0}%");
+                    fusionText.text = app.Battle.CurrentFusion == FusionKind.None ? $"下一次形态突破 Lv.{app.Session.Builds.NextBreakthrough} · Lv.6 获得普攻联动"
+                        : LinkArtCatalog.Names[(int)app.Battle.CurrentFusion - 1] + $" {app.Battle.LinkArtProgress * 100:0}%" + (app.Battle.UltimateUnlocked ? $"  |  Q {FusionCatalog.Name(app.Battle.CurrentFusion)} {app.Battle.FusionEnergy:0}%" : " · Lv.12 解锁终极技能");
                 }
             }
             bool show = app.TestMode && app.Session.State != MatchState.ChoosingBuild && app.Session.State != MatchState.MainMenu && app.Session.State != MatchState.HomeBase;
@@ -119,9 +124,8 @@ namespace StarFall
             if (show) trainingHint.text = "测试模式 · 无永久收益 · " + app.Battle.ActiveGem.displayName + " / " + ElementCatalog.ResonanceName(app.Battle.ActiveGem.element, app.Session.Builds.Resonance)
                 + (app.Session.Invulnerable ? " · 无敌开启" : " · 正常受伤") + " · 切换宝石或共鸣将重开本局";
             if (show && app.Battle.TrainingShowcase && app.Battle.CurrentFusion != FusionKind.None)
-                trainingHint.text = "试打 · 无永久收益 · " + FusionCatalog.Name(app.Battle.CurrentFusion) + "：" + FusionCatalog.Descriptions[(int)app.Battle.CurrentFusion - 1]
+                trainingHint.text = "Q释放终极 · 无永久收益 · " + FusionCatalog.Name(app.Battle.CurrentFusion) + "：" + FusionCatalog.Descriptions[(int)app.Battle.CurrentFusion - 1]
                     + (app.Session.Invulnerable ? " · 无敌" : " · 正常受伤");
         }
     }
 }
-

@@ -47,8 +47,8 @@ namespace StarFall.Editor
                             enemy.Damaged = (p, amount, element) => { originalEvent?.Invoke(p, amount, element); counts.TryGetValue(element, out int n); counts[element] = n + 1; };
                         }
                         var aim = pair == 7 ? victims[1].Position : new Vector3(0, 0.6f, 4);
-                        float chargePerCast = 100f / (battle.AttackFrequency * 6);
-                        battle.Step(0.02f, Vector2.zero, aim);
+                        float chargePerCast = 100f / (battle.AttackFrequency * battle.UltimateChargeSeconds);
+                        battle.Step(0.02f, Vector2.zero, aim, ultimate: true);
                         check(battle.FusionCastCount == 1 && battle.ActiveFusionCount == 1, "Charged combination casts " + pair + "/" + reverse);
                         float elapsed = pair == 3 ? 0.7f : pair == 7 ? 1 : 1.5f;
                         battle.Step(elapsed, Vector2.zero, aim, true);
@@ -80,19 +80,19 @@ namespace StarFall.Editor
                 subject.transform.position = new Vector3(0, 0.6f, 4);
                 var lightning = new List<float>(); var previous = subject.Damaged;
                 subject.Damaged = (p, n, e) => { previous?.Invoke(p, n, e); if (e == DamageElement.Lightning) lightning.Add(n); };
-                battle.Step(0.02f, Vector2.zero, new Vector3(0, 0.6f, 4));
+                battle.Step(0.02f, Vector2.zero, new Vector3(0, 0.6f, 4), ultimate: true);
                 battle.Step(2.2f, Vector2.zero, null, true);
-                check(lightning.Contains(4) && lightning.Contains(6) && lightning.Contains(8) && lightning.Contains(10), "Conductive pool ramps over four hits then caps");
+                check(new[] { 8.8f, 13.2f, 17.6f, 22f }.All(expected => lightning.Any(actual => Mathf.Abs(actual - expected) < 0.001f)), "Conductive pool ramps over four hits then caps");
 
                 app.StartShowcase(7);
                 foreach (var e in battle.Enemies) { e.transform.position = new Vector3(12, 0.6f, -10); e.PrepareTrainingTarget(10000, 0); }
                 var first = battle.Enemies[0]; var behind = battle.Enemies[1];
                 first.transform.position = new Vector3(0, 0.6f, 2); behind.transform.position = new Vector3(0, 0.6f, 6);
-                battle.Step(0.02f, Vector2.zero, first.Position); battle.Step(1.1f, Vector2.zero, null, true);
+                battle.Step(0.02f, Vector2.zero, first.Position, ultimate: true); battle.Step(1.1f, Vector2.zero, null, true);
                 check(first.Health < behind.Health && behind.Health < 10000, "Rail prioritizes one target and pierces enemies behind it");
                 app.RestartTraining(); battle.TrainingTargets(); battle.TrainingChargeFusion();
                 first = battle.Enemies[1]; Vector3 locked = first.Position;
-                battle.Step(0.02f, Vector2.zero, locked);
+                battle.Step(0.02f, Vector2.zero, locked, ultimate: true);
                 int generation = first.Generation;
                 first.Spawn(new Vector3(12, 0.6f, -10), config); first.PrepareTrainingTarget(10000, 0);
                 battle.Step(1.2f, Vector2.zero, null, true);
@@ -105,7 +105,7 @@ namespace StarFall.Editor
                     app.StartShowcase(pair);
                     battle.Player.transform.position = new Vector3(-5, 0.6f, 0);
                     foreach (var e in battle.Enemies) { e.transform.position = new Vector3(2, 0.6f, 0); e.PrepareTrainingTarget(10000, 0); }
-                    battle.Step(0.02f, Vector2.zero, new Vector3(4, 0.6f, 0));
+                    battle.Step(0.02f, Vector2.zero, new Vector3(4, 0.6f, 0), ultimate: true);
                     battle.Step(5, Vector2.zero, null, true);
                     check(battle.Enemies.All(e => e.Health == 10000), "Combination cannot damage across wall " + pair);
                     if (pair == 7) check(battle.FusionEnergy == 100 && battle.FusionCastCount == 0, "Blocked rail target preserves charge");

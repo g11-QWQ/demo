@@ -62,7 +62,7 @@ namespace StarFall
                     if (new Plane(Vector3.up, Vector3.zero).Raycast(ray, out float distance)) aimPoint = ray.GetPoint(distance);
                 }
             }
-            Battle.Step(Time.deltaTime, movement, aimPoint, keyboard != null && keyboard.spaceKey.isPressed);
+            Battle.Step(Time.deltaTime, movement, aimPoint, keyboard != null && keyboard.spaceKey.isPressed, keyboard != null && keyboard.qKey.wasPressedThisFrame);
             if (keyboard != null && keyboard.eKey.wasPressedThisFrame) Battle.TryOpenChest();
             if (Session.State == MatchState.Won || Session.State == MatchState.Lost)
             {
@@ -137,7 +137,3 @@ namespace StarFall
         private void OnDestroy() { Session.StateChanged -= OnStateChanged; Session.SoulsCollected -= SaveCollectedSouls; }
     }
 }
-
-
-
-

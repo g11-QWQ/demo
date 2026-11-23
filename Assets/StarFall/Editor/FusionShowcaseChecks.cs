@@ -47,7 +47,7 @@ namespace StarFall.Editor
                     var victims = battle.Enemies.ToArray();
                     foreach (var enemy in victims) enemy.PrepareTrainingTarget(1000, 0);
                     var aim = pair == 0 ? victims[1].Position : new Vector3(0, 0.6f, 4);
-                    battle.Step(0.02f, Vector2.zero, aim);
+                    battle.Step(0.02f, Vector2.zero, aim, ultimate: true);
                     check(battle.FusionCastCount == 1 && battle.ActiveFusionCount == 1 && battle.FusionEnergy < 1, "Full charge casts signature spell " + pair);
                     battle.Step(pair == 0 ? 0.75f : 1.5f, Vector2.zero, aim, true);
                     check(victims.Any(e => e.Health < 1000) && ui.DamageNumberCount > 0, "Signature spell deals damage and emits labels " + pair);
@@ -81,18 +81,18 @@ namespace StarFall.Editor
                     app.TestResonance = secondary[i]; app.RestartTraining(main[i]);
                     battle.TrainingTargets(); battle.TrainingChargeFusion();
                     Vector3 aim = i == 0 ? battle.Enemies[1].Position : new Vector3(0, 0.6f, 4);
-                    battle.Step(2, Vector2.zero, aim);
+                    battle.Step(2, Vector2.zero, aim, ultimate: true);
                     check(battle.FusionCastCount == 1 && battle.Enemies.Any(e => e.Health < 250), "Reverse elemental pairing works " + i);
                 }
                 // A spread credits energy once for its whole cast, even when several blades hit.
                 app.StartShowcase(2); battle.TrainingTargets();
-                battle.Step(0.02f, Vector2.zero, new Vector3(0, 0.6f, 4));
+                battle.Step(0.02f, Vector2.zero, new Vector3(0, 0.6f, 4), ultimate: true);
                 battle.Step(0.6f, Vector2.zero, null, true);
-                check(battle.FusionEnergy > 0 && battle.FusionEnergy <= 100f / (battle.AttackFrequency * 6) + 0.001f, "Wind volley cannot multiply fusion charge");
+                check(battle.FusionEnergy > 0 && battle.FusionEnergy <= 100f / (battle.AttackFrequency * battle.UltimateChargeSeconds) + 0.001f, "Wind volley cannot multiply fusion charge");
                 battle.TrainingTargets();
                 battle.Step(2, Vector2.zero, new Vector3(0, 0.6f, -16));
                 check(battle.FusionEnergy == 0, "Missed attacks do not charge fusion");
-                battle.TrainingChargeFusion(); battle.Step(0.8f, Vector2.zero, new Vector3(0, 0.6f, 4));
+                battle.TrainingChargeFusion(); battle.Step(0.8f, Vector2.zero, new Vector3(0, 0.6f, 4), ultimate: true);
                 battle.TrainingBoss();
                 check(battle.ActiveFusionCount == 0 && battle.FusionEnergy == 0 && !battle.TrainingShowcase, "Boss shortcut clears showcase spells");
                 app.ReturnToBase();

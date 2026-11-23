@@ -5,7 +5,7 @@ namespace StarFall
     public sealed class GameAudio : MonoBehaviour
     {
         private AudioSource source;
-        private AudioClip shot, hurt, victory;
+        private AudioClip shot, hurt, victory, ultimate;
         public float Volume { get; private set; }
 
         private void Awake()
@@ -16,6 +16,7 @@ namespace StarFall
             shot = Tone("Shot", 660, 0.055f);
             hurt = Tone("Hurt", 130, 0.13f);
             victory = Tone("Victory", 880, 0.5f);
+            ultimate = Tone("Ultimate", 220, 0.55f);
             SetVolume(PlayerPrefs.GetFloat("StarFall.Volume", 0.5f));
         }
 
@@ -24,6 +25,7 @@ namespace StarFall
         public void PlayShot() => source.PlayOneShot(shot, 0.13f);
         public void PlayHurt() => source.PlayOneShot(hurt, 0.3f);
         public void PlayVictory() => source.PlayOneShot(victory, 0.25f);
+        public void PlayUltimate() => source.PlayOneShot(ultimate, 0.42f);
 
         private static AudioClip Tone(string name, float frequency, float duration)
         {
@@ -44,6 +46,7 @@ namespace StarFall
             if (shot != null) Destroy(shot);
             if (hurt != null) Destroy(hurt);
             if (victory != null) Destroy(victory);
+            if (ultimate != null) Destroy(ultimate);
         }
     }
 }

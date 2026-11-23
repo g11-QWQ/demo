@@ -8,7 +8,8 @@ namespace StarFall
         private GemDefinition activeGem;
         public GemDefinition ActiveGem => activeGem != null ? activeGem : config.gem;
         public bool Training { get; private set; }
-        private float StageTime => session.Elapsed * (Training ? 3 : 1);
+        public bool LongTraining { get; private set; }
+        private float StageTime => session.Elapsed * (Training && !LongTraining ? 3 : 180f / config.duration);
         public int ResonanceTriggers { get; private set; }
         public int MudCount => mud.Count;
         private sealed class Flash { public LineRenderer Ring; public float Remaining, Duration, Radius; public bool Arc; }
@@ -22,22 +23,23 @@ namespace StarFall
             if (activeGem != null) Destroy(activeGem);
             activeGem = ElementCatalog.Create(element, config.gem);
             player.SetGemColor(element);
-            Training = training; TrainingShowcase = false; ResonanceTriggers = 0; FusionCastCount = 0; fusionAim = Vector3.forward * 8;
+            Training = training; TrainingShowcase = false; ResonanceTriggers = 0; FusionCastCount = 0; trainingUltimate = unlockGranted = false; harmonyRemaining = 0; fusionAim = Vector3.forward * 8;
         }
         private int Rank(BuildId id) => session.Builds.Rank(id);
         private void CastSpell()
         {
-            TryCastFusion();
+
             int extra = ActiveGem.element == DamageElement.Wind ? Rank(BuildId.WindFan) : 0;
             int count = ActiveGem.element == DamageElement.Wind ? 3 + extra : 1;
-            var cast = new Projectile.Cast { Number = ShotsFired + 1, ChargeValue = 100f / (AttackFrequency * 6) };
+            if (session.Builds.Form == 2) count += 2;
+            var cast = new Projectile.Cast { Number = ShotsFired + 1, ChargeValue = 100f / (AttackFrequency * UltimateChargeSeconds) };
             float charge = session.ConsumeSoulFire();
             for (int i = 0; i < count; i++)
             {
                 var bullet = projectilePool.Count > 0 ? projectilePool.Pop() : Instantiate(projectilePrefab, transform);
                 bool additional = i >= 3;
                 float angle = count == 1 ? 0 : i < 3 ? (i - 1) * 12 : i == 3 ? -24 : 24;
-                bullet.Configure(ActiveGem, config.staff, permanentEfficiency + 0.2f * Rank(BuildId.FireAffinity), charge * (additional ? 0.6f : 1), 2 + Rank(BuildId.Embers));
+                bullet.Configure(ActiveGem, config.staff, permanentEfficiency + 0.2f * Rank(BuildId.FireAffinity), charge * (additional ? 0.6f : 1) * AttackPower * (session.Builds.Form == 1 ? 0.85f : session.Builds.Form == 2 ? 0.65f : session.Builds.Form == 3 ? 1.65f : 1), 2 + Rank(BuildId.Embers));
                 bullet.SourceCast = cast; bullet.Resonance = session.Builds.Resonance;
                 switch (ActiveGem.element)
                 {
@@ -47,6 +49,9 @@ namespace StarFall
                     case DamageElement.Ocean: bullet.SpecialRank = Rank(BuildId.OceanChill); bullet.SecondaryRank = Rank(BuildId.OceanPressure); break;
                     case DamageElement.Earth: bullet.AddBaseDamage(4 * Rank(BuildId.EarthCore)); bullet.SpecialRank = Rank(BuildId.EarthMark); break;
                 }
+                bullet.PiercesLeft += session.Builds.Form == 1 ? 2 : 0;
+                bullet.Heavy = session.Builds.Form == 3; bullet.Returning = bullet.Heavy && ActiveGem.element == DamageElement.Wind;
+                bullet.LinkEvolution = session.Builds.Evolution;
                 bullet.Launch(player.Position, Quaternion.Euler(0, angle, 0) * player.AimDirection, ActiveGem.range);
                 projectiles.Add(bullet);
             }
@@ -56,6 +61,8 @@ namespace StarFall
             for (int i = projectiles.Count - 1; i >= 0; i--)
             {
                 var bullet = projectiles[i];
+                if (bullet.Returning && !bullet.OnReturn && bullet.DistanceLeft <= ActiveGem.range * 0.5f) bullet.BeginReturn(player.Position);
+                if (bullet.OnReturn) bullet.AimReturn(player.Position);
                 Vector3 start = bullet.Position, next = bullet.NextPosition(bullet.Speed * delta);
                 bool wall = navigation.FirstWallHit(start, next, bullet.Radius, out float wallTime);
                 bool consumed = false;
@@ -72,7 +79,7 @@ namespace StarFall
                     if (hit == null) break;
                     bullet.Hits.Add(hit);
                     ResolveHit(bullet, hit);
-                    if (bullet.PiercesLeft <= 0) { consumed = true; break; }
+                    if (bullet.PiercesLeft <= 0 && !bullet.Returning) { consumed = true; break; }
                     bullet.PiercesLeft--; bullet.Attenuate();
                 }
                 bullet.MoveTo(wall ? Vector3.Lerp(start, next, wallTime) : next);
@@ -82,11 +89,12 @@ namespace StarFall
         }
         private void ResolveHit(Projectile bullet, EnemyController target)
         {
-            CreditFusion(bullet);
+            if (!bullet.Derived) { CreditFusion(bullet); CreditLinkArt(bullet); }
+            TriggerAttackLink(bullet, target);
             var center = target.Position;
             if (bullet.Element == DamageElement.Lightning)
             {
-                float radius = 1.8f * (1 + 0.15f * bullet.SpecialRank);
+                float radius = 1.8f * (1 + 0.15f * bullet.SpecialRank) * (bullet.Heavy ? 1.4f : 1);
                 var victims = new HashSet<EnemyController>();
                 foreach (var enemy in enemies.ToArray())
                     if ((enemy.Position - center).sqrMagnitude <= radius * radius && navigation.ClearLine(center, enemy.Position, 0))
@@ -109,6 +117,12 @@ namespace StarFall
             }
             else { DamageTarget(bullet, target); Pulse(center, bullet.Element == DamageElement.Earth ? 0.7f : 0.4f, bullet.Element); }
 
+            if (bullet.Heavy && bullet.Element != DamageElement.Wind && bullet.Element != DamageElement.Lightning)
+            {
+                foreach (var victim in enemies.ToArray())
+                    if (victim != target && (victim.Position - center).sqrMagnitude < 2.56f && navigation.ClearLine(center, victim.Position, 0)) DamageTarget(bullet, victim, 0.5f);
+                Pulse(center, 1.6f, bullet.Element);
+            }
             if (bullet.SourceCast == null || bullet.SourceCast.ResonanceTriggered) return;
             bool swamp = (bullet.Element == DamageElement.Ocean && bullet.Resonance == DamageElement.Earth) || (bullet.Element == DamageElement.Earth && bullet.Resonance == DamageElement.Ocean);
             if (swamp && bullet.SourceCast.Number % 3 == 0)
@@ -125,6 +139,8 @@ namespace StarFall
             AccumulateMark(enemy, damage);
             if (enemy.TakeDamage(damage, bullet.Element))
             { KillEnemy(enemy); return; }
+            if (bullet.Derived && bullet.SecondaryHit != DamageElement.Physical)
+            { LinkDamage(enemy, 2, bullet.SecondaryHit, bullet.Efficiency); if (enemy.Health <= 0) return; }
             if (bullet.Element == DamageElement.Fire) enemy.ApplyBurn(CombatMath.Damage(bullet.BurnBaseDamage, 1, bullet.Efficiency, enemy.ResistanceFor(DamageElement.Fire)));
             if (bullet.Element == DamageElement.Ocean) enemy.ApplySlow(0.25f + bullet.SpecialRank * 0.1f, 1.5f);
             if (bullet.Element == DamageElement.Earth && bullet.SpecialRank > 0) enemy.AddEarthMark();
@@ -192,7 +208,7 @@ namespace StarFall
         }
         private void ClearSpellEffects()
         {
-            ClearFusions();
+            ClearFusions(); ClearAttackLinks();
             foreach (var flash in flashes) { flash.Ring.gameObject.SetActive(false); flashPool.Push(flash.Ring); } flashes.Clear();
             foreach (var zone in mud) { zone.Visual.SetActive(false); mudPool.Push(zone.Visual); } mud.Clear();
         }
@@ -210,4 +226,3 @@ namespace StarFall
         }
     }
 }
-

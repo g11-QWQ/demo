@@ -72,7 +72,7 @@ namespace StarFall
             choiceInputArmed = false;
             unlockChoicesAt = Time.unscaledTime + 0.2f;
             if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
-            draftTitle.text = $"灵魂觉醒 · Lv.{builds.Level}";
+            draftTitle.text = $"{(builds.ChoiceLevel % 3 == 0 ? "形态突破" : "灵魂强化")} · Lv.{builds.ChoiceLevel}";
             draftHint.text = DraftHint();
             for (int i = 0; i < buildButtons.Length; i++)
             {
@@ -86,11 +86,11 @@ namespace StarFall
                 button.GetComponent<RectTransform>().anchoredPosition = new Vector2((i - (builds.Offers.Count - 1) * 0.5f) * 340, -10);
                 var id = builds.Offers[i];
                 int revision = builds.Revision;
-                var definition = BuildCatalog.Get(id);
+                var definition = AttackLinkCatalog.Present(id, builds);
                 buildRoutes[i].text = definition.Route;
                 buildTitles[i].text = definition.Name;
                 buildDescriptions[i].text = definition.Description;
-                buildRanks[i].text = $"{builds.Rank(id)} → {builds.Rank(id) + 1}  /  {definition.MaxRank} 级";
+                buildRanks[i].text = definition.MaxRank == 1 ? "" : $"{builds.Rank(id)} → {builds.Rank(id) + 1} 级";
                 button.onClick.AddListener(() =>
                 {
                     if (!choiceInputArmed) return;
@@ -114,14 +114,15 @@ namespace StarFall
                 int rank = builds.Rank(definition.Id);
                 if (rank <= 0) continue;
                 if (text.Length > 0) text.Append("   ·   ");
-                text.Append(definition.Name).Append(" ").Append(rank).Append("级");
+                text.Append(AttackLinkCatalog.Present(definition.Id, builds).Name).Append(" ").Append(rank).Append("级");
             }
             ownedSummary = text.Length == 0 ? "尚未获得构筑" : text.ToString();
         }
 
         private string DraftHint() => app.Session.Builds.PendingChoices > 1
             ? $"战斗已暂停 · 还有 {app.Session.Builds.PendingChoices} 次选择，逐次确认后继续"
-            : "战斗已暂停 · 选择一项强化";
+            : app.Session.Builds.ChoiceLevel == 12 ? "战斗已暂停 · 解锁即满能量，按 Q 释放"
+            : "战斗已暂停 · 每级伤害 +9%、攻速 +2.5%";
 
         private void RefreshBuildHud(MatchSession session)
         {

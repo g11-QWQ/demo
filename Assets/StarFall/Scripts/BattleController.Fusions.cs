@@ -9,7 +9,7 @@ namespace StarFall
         private sealed class Fusion
         {
             public FusionKind Kind; public DamageElement Main;
-            public Vector3 Position, Direction; public float Age, Lifetime, Tick, Efficiency, Bonus;
+            public Vector3 Position, Direction; public float Age, Lifetime, Tick, Efficiency, Bonus, AreaScale = 1;
             public EnemyController Target; public int Generation; public bool Struck;
             public FusionVisual Visual;
             public readonly HashSet<EnemyController> WaveHits = new HashSet<EnemyController>();
@@ -24,10 +24,27 @@ namespace StarFall
         public int ActiveFusionCount => fusions.Count;
         public FusionKind CurrentFusion => FusionCatalog.Get(ActiveGem.element, session.Builds.Resonance);
         public bool TrainingShowcase { get; private set; }
+        private bool trainingUltimate, unlockGranted;
+        private float harmonyRemaining;
+        public bool UltimateUnlocked => trainingUltimate || session.Builds.UltimateUnlocked;
+        public float UltimateChargeSeconds => (session.Builds.UltimateStyle == 1 ? 12 : session.Builds.UltimateStyle == 3 ? 8 : 10) * (session.Builds.Specialization == 3 ? 0.85f : 1);
+        public float GrowthPower => 1 + 0.09f * (session.Builds.Level - 1) + 0.15f * Mathf.Min(3, session.Builds.Level / 3);
+        private float AttackPower => GrowthPower * (session.Builds.Specialization == 1 ? 1.35f : 1) * (harmonyRemaining > 0 ? 1.5f : 1);
+        private void SyncUltimateUnlock()
+        {
+            if (!unlockGranted && session.Builds.UltimateUnlocked) { unlockGranted = true; FusionEnergy = 100; }
+        }
+        public bool TryReleaseUltimate(Vector3? aim = null)
+        {
+            if (session.State != MatchState.Playing || player.IsAbsorbing || !UltimateUnlocked) return false;
+            if (aim.HasValue) { fusionAim = aim.Value; player.Aim(aim.Value - player.Position); }
+            SyncUltimateUnlock(); int previous = FusionCastCount; TryCastFusion();
+            return FusionCastCount > previous;
+        }
 
         private void CreditFusion(Projectile bullet)
         {
-            if (CurrentFusion == FusionKind.None || bullet.SourceCast == null || bullet.SourceCast.ChargeCredited
+            if (!UltimateUnlocked || CurrentFusion == FusionKind.None || bullet.SourceCast == null || bullet.SourceCast.ChargeCredited
                 || FusionCatalog.Get(bullet.Element, bullet.Resonance) != CurrentFusion) return;
             bullet.SourceCast.ChargeCredited = true;
             FusionEnergy = Mathf.Min(100, FusionEnergy + bullet.SourceCast.ChargeValue);
@@ -60,9 +77,16 @@ namespace StarFall
             position.y = 0.08f;
             var effect = new Fusion { Kind = kind, Main = ActiveGem.element, Position = position, Direction = player.AimDirection,
                 Lifetime = kind == FusionKind.Judgment ? 1.35f : kind == FusionKind.FireTornado ? (ActiveGem.element == DamageElement.Fire ? 4.4f : 3.8f) : kind == FusionKind.OceanVortex ? 3.9f : ExtendedLifetime(kind),
-                Efficiency = FireEfficiency, Target = target, Generation = target != null ? target.Generation : 0, Tick = 0.35f };
+                Efficiency = FireEfficiency * GrowthPower * 2.2f * (session.Builds.UltimateStyle == 1 ? 1.4f : session.Builds.UltimateStyle == 2 ? 0.85f : session.Builds.UltimateStyle == 3 ? 0.75f : 1)
+                    * (session.Builds.Specialization == 1 ? 0.85f : session.Builds.Specialization == 2 ? 1.4f : 1),
+                AreaScale = 1.15f * (session.Builds.UltimateStyle == 2 ? 1.25f : 1),
+                Target = target, Generation = target != null ? target.Generation : 0, Tick = 0.35f };
+            if (session.Builds.UltimateStyle == 2 && (kind == FusionKind.FireTornado || kind == FusionKind.ConductivePool || kind == FusionKind.StormFront || kind == FusionKind.SandDrill)) effect.Lifetime *= 1.25f;
             effect.Visual = AcquireFusionVisual(); effect.Visual.Draw(kind, 0, position, effect.Direction, effect.Lifetime);
+            effect.Visual.transform.localScale = Vector3.one * effect.AreaScale;
             fusions.Add(effect); FusionEnergy = 0; FusionCastCount++; ResonanceTriggers++;
+            if (session.Builds.Specialization == 3) harmonyRemaining = 6;
+            audioService?.PlayUltimate();
         }
         private FusionVisual AcquireFusionVisual()
         {
@@ -91,7 +115,7 @@ namespace StarFall
         private bool InFusionRange(Fusion effect, EnemyController enemy, float radius)
         {
             Vector3 offset = enemy.Position - effect.Position; offset.y = 0;
-            return offset.sqrMagnitude <= radius * radius && navigation.ClearLine(effect.Position, enemy.Position, 0);
+            return offset.sqrMagnitude <= radius * radius * effect.AreaScale * effect.AreaScale && navigation.ClearLine(effect.Position, enemy.Position, 0);
         }
         private void Pull(Fusion effect, EnemyController enemy, float delta, float speed)
         {
@@ -150,11 +174,11 @@ namespace StarFall
                     }
                     else
                     {
-                        var waveCenter = effect.Position + effect.Direction * (Mathf.Clamp01((effect.Age - 3.2f) / 0.7f) * 6);
+                        var waveCenter = effect.Position + effect.Direction * (Mathf.Clamp01((effect.Age - 3.2f) / 0.7f) * 6 * effect.AreaScale);
                         foreach (var enemy in enemies.ToArray())
                         {
                             Vector3 offset = enemy.Position - waveCenter; offset.y = 0;
-                            if (effect.WaveHits.Contains(enemy) || offset.sqrMagnitude > 9 || !navigation.ClearLine(effect.Position, enemy.Position, 0)) continue;
+                            if (effect.WaveHits.Contains(enemy) || offset.sqrMagnitude > 9 * effect.AreaScale * effect.AreaScale || !navigation.ClearLine(effect.Position, enemy.Position, 0)) continue;
                             effect.WaveHits.Add(enemy);
                             FusionDamage(effect, enemy, 16, DamageElement.Ocean); FusionDamage(effect, enemy, 8, DamageElement.Wind);
                             if (enemy.Health > 0) enemy.transform.position = navigation.Move(enemy.Position, effect.Direction * (enemy.Kind == EnemyKind.Normal ? 2.5f : 0.25f), enemy.Radius);
@@ -171,7 +195,7 @@ namespace StarFall
             foreach (var effect in fusions) { effect.Visual.gameObject.SetActive(false); fusionPool.Push(effect.Visual); }
             fusions.Clear(); FusionEnergy = 0;
         }
-        public void TrainingChargeFusion() { if (Training && session.State == MatchState.Playing && CurrentFusion != FusionKind.None) FusionEnergy = 100; }
+        public void TrainingChargeFusion() { if (Training && session.State == MatchState.Playing && CurrentFusion != FusionKind.None) { trainingUltimate = true; FusionEnergy = 100; } }
         public void TrainingTargets()
         {
             if (!Training || session.State != MatchState.Playing) return;
@@ -182,7 +206,7 @@ namespace StarFall
             TrainingShowcase = true; Boss = null; pendingClear = false; spawnRemaining = float.PositiveInfinity;
             player.transform.position = navigation.ClosestFree(new Vector3(0, 0.6f, -3), config.playerRadius); player.Aim(Vector3.forward);
             fusionAim = new Vector3(0, 0.08f, 4);
-            for (int i = 0; i < 12; i++)
+            for (int i = 0; i < Mathf.Min(12, Mathf.Max(1, config.maxEnemies)); i++)
             {
                 SpawnEnemy(); var enemy = enemies[enemies.Count - 1];
                 enemy.transform.position = navigation.ClosestFree(new Vector3((i % 4 - 1.5f) * 1.5f, 0.6f, 2 + i / 4 * 2), enemy.Radius);

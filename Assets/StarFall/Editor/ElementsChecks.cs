@@ -42,17 +42,17 @@ namespace StarFall.Editor
                     app.UI.Refresh(app.Session, 0); capture(app, "22-element-" + index);
                 }
                 app.TestResonance = DamageElement.Lightning; app.RestartTraining(0);
-                var targets = Prepare(app); battle.TrainingChargeFusion(); battle.Step(0.9f, Vector2.zero, Vector3.forward * 12);
-                check(battle.FusionCastCount == 1 && targets[1].Health < 100, "Charged fire-lightning releases a marked lightning strike");
+                var targets = Prepare(app); foreach (var victim in targets) victim.PrepareTrainingTarget(1000, 0); battle.TrainingChargeFusion(); battle.Step(0.9f, Vector2.zero, Vector3.forward * 12, ultimate: true);
+                check(battle.FusionCastCount == 1 && targets[1].Health < 1000, "Charged fire-lightning releases a marked lightning strike");
                 app.UI.Refresh(app.Session, 0); capture(app, "23-fire-lightning");
                 app.TestResonance = DamageElement.Wind; app.RestartTraining(0);
-                targets = Prepare(app); battle.TrainingChargeFusion(); battle.Step(1.6f, Vector2.zero, Vector3.forward * 12);
+                targets = Prepare(app); foreach (var victim in targets) victim.PrepareTrainingTarget(1000, 0); battle.TrainingChargeFusion(); battle.Step(1.6f, Vector2.zero, Vector3.forward * 12, ultimate: true);
                 check(targets[1].IsBurning && battle.FusionCastCount == 1, "Fire-wind tornado burns the nearby group");
                 app.TestResonance = DamageElement.Fire; app.RestartTraining(1);
-                targets = Prepare(app); battle.TrainingChargeFusion(); battle.Step(0.9f, Vector2.zero, Vector3.forward * 12);
-                check(targets[0].IsBurning && targets[1].IsBurning, "Lightning-fire judgment leaves fire on surviving victims");
+                targets = Prepare(app); foreach (var victim in targets) victim.PrepareTrainingTarget(1000, 0); battle.TrainingChargeFusion(); battle.Step(0.9f, Vector2.zero, Vector3.forward * 12, ultimate: true);
+                check((targets[0].Health <= 0 || targets[0].IsBurning) && (targets[1].Health <= 0 || targets[1].IsBurning), "Lightning-fire judgment leaves fire on surviving victims");
                 app.TestResonance = DamageElement.Fire; app.RestartTraining(2);
-                targets = Prepare(app); battle.TrainingChargeFusion(); battle.Step(1.3f, Vector2.zero, Vector3.forward * 12);
+                targets = Prepare(app); foreach (var victim in targets) victim.PrepareTrainingTarget(1000, 0); battle.TrainingChargeFusion(); battle.Step(1.3f, Vector2.zero, Vector3.forward * 12, ultimate: true);
                 check(targets[0].IsBurning && battle.ResonanceTriggers > 0, "Wind-fire tornado burns victims");
                 app.TestResonance = DamageElement.Earth; app.RestartTraining(3);
                 targets = Prepare(app); battle.Step(1.7f, Vector2.zero, Vector3.forward * 12);
@@ -89,7 +89,7 @@ namespace StarFall.Editor
                 targets = Prepare(app); battle.Step(1, Vector2.zero, Vector3.forward * 12);
                 check(Math.Abs(targets[0].Health - 84.95f) < 0.01f && Math.Abs(targets[0].SlowStrength - 0.35f) < 0.001f, "Ocean upgrades strengthen slow and damage against controlled enemies");
                 app.RestartTraining(0); app.Session.Builds.GrantForTraining(BuildId.FlameBurst); app.Session.Builds.GrantForTraining(BuildId.Embers);
-                targets = Prepare(app); battle.Step(0.9f, Vector2.zero, Vector3.forward * 12); battle.Step(0.5f, Vector2.zero, null, true);
+                targets = Prepare(app); battle.Step(0.9f, Vector2.zero, Vector3.forward * 12, ultimate: true); battle.Step(0.5f, Vector2.zero, null, true);
                 check(Math.Abs(targets[0].Health - 79.8f) < 0.01f, "Fire upgrades increase direct damage against burning targets and burn ticks");
                 app.RestartTraining(4); app.Session.Builds.GrantForTraining(BuildId.EarthCore); app.Session.Builds.GrantForTraining(BuildId.EarthMark);
                 targets = Prepare(app); battle.Step(1.7f, Vector2.zero, Vector3.forward * 12);
@@ -148,24 +148,17 @@ namespace StarFall.Editor
             for (int e = 1; e <= 5; e++)
             {
                 var builds = new BuildProgression(); builds.Reset(null, 23, (DamageElement)e);
-                for (int choice = 0; choice < 6; choice++)
+                builds.AddExperience(100000);
+                while (builds.PendingChoices > 0)
                 {
-                    builds.AddExperience(builds.ExperienceRequired);
-                    if (choice == 2 || choice == 5) check(builds.Offers.Any(BuildCatalog.IsResonance), "Third and sixth choices guarantee compatible resonance opportunities");
-                    check(builds.Offers.Any(id => !BuildCatalog.IsResonance(id)), "Expanded resonance pool still allows deferring a combination");
-                    foreach (var id in builds.Offers)
-                        check(BuildCatalog.IsResonance(id) ? ElementCatalog.Compatible((DamageElement)e, BuildCatalog.ResonanceElement(id)) : BuildCatalog.ExclusiveElement(id) == DamageElement.Physical || BuildCatalog.ExclusiveElement(id) == (DamageElement)e, "Draft contains only usable elemental cards");
-                    var selected = choice == 5 ? builds.Offers.First(BuildCatalog.IsResonance) : builds.Offers.First(id => !BuildCatalog.IsResonance(id));
-                    builds.Choose(selected, builds.Revision);
-                }
-                check(builds.Resonance != DamageElement.Physical, "Resonance selection binds one secondary element");
-                builds.AddExperience(100000); int guard = 0;
-                while (builds.PendingChoices > 0 && guard++ < 40)
-                {
-                    check(builds.Offers.Count > 0 && !builds.Offers.Any(BuildCatalog.IsResonance), "Bound resonance removes all other resonance cards without starving pool");
+                    int level = builds.ChoiceLevel;
+                    check(builds.Offers.Count == 3, "Each level offers three choices including breakthroughs");
+                    check(builds.Offers.All(id => builds.Eligible(id)), "Every offer belongs to the current level and element");
+                    if (level == 6) check(builds.Offers.All(BuildCatalog.IsResonance), "Level six binds a secondary element");
+                    if (level == 3 || level == 9 || level == 12 || level == 15) check(builds.Offers.All(BuildCatalog.IsMilestone), "Fixed breakthrough has form choices");
                     builds.Choose(builds.Offers[0], builds.Revision);
                 }
-                check(builds.PendingChoices == 0 && builds.TotalRanks == builds.MaximumRanks, "Every elemental pool exhausts without a stuck draft");
+                check(builds.Level == 15 && builds.TotalRanks == 14 && builds.Resonance != DamageElement.Physical && builds.UltimateUnlocked, "All five elements finish the fifteen-level progression");
             }
         }
         private static void SetConfig(BattleController battle, BattleConfig config)
@@ -186,4 +179,3 @@ namespace StarFall.Editor
         }
     }
 }
-
