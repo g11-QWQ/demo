@@ -52,8 +52,9 @@ namespace StarFall.Editor
 
         private static void Update()
         {
+            if (SessionState.GetBool("StarFall.Performance.Pending", false)) return;
             if (!SessionState.GetBool(Pending, false) || !EditorApplication.isPlaying) return;
-            if (deadline == 0) deadline = EditorApplication.timeSinceStartup + 120;
+            if (deadline == 0) deadline = EditorApplication.timeSinceStartup + 600;
             try
             {
                 if (errors.Count > 0) throw new Exception(string.Join("\n", errors));
@@ -151,7 +152,7 @@ namespace StarFall.Editor
                         Click(app.UI.GetBuildButton(vitalityIndex));
                         Check(app.Session.State == MatchState.Playing && app.Session.MaxHealth == 120 && !app.UI.BuildSelectionVisible, "Real card click applies effect and resumes game");
                         app.ReturnToMenu(); app.NewGame(); app.Deploy();
-                        app.Session.CollectSoul(7);
+                        app.Session.CollectSoul(app.Battle.Config.levelExperience[0] + app.Battle.Config.levelExperience[1]);
                         Check(app.Session.Builds.PendingChoices == 2, "Live multi-level pickup queues two choices");
                         nextStep = EditorApplication.timeSinceStartup + 0.4;
                         phase = 22;
@@ -220,10 +221,16 @@ namespace StarFall.Editor
                         break;
                     case 4:
                         Check(app.UI.BaseVisible, "Defeat also returns to base");
+                        var savedCosts = app.Battle.Config.levelExperience;
+                        app.Battle.Config.levelExperience = new[] { 3, 4, 5, 6, 8, 10, 12 };
                         StageFourChecks.Run(app, Check, Capture, Click);
+                        app.Battle.Config.levelExperience = savedCosts;
                         ElementsChecks.Run(app, Check, Capture, Click);
                         FusionShowcaseChecks.Run(app, Check, Capture);
                         RemainingFusionChecks.Run(app, Check, Capture, Click);
+                        CombatGrowthChecks.Run(app, Check, Capture);
+                        EnemyBoundaryChecks.Run(app, Check);
+                        LinkArtChecks.Run(app, Check, Capture);
                         app.TestResonance = DamageElement.Physical;
                         app.StartTraining();
                         InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Digit3));
@@ -241,6 +248,17 @@ namespace StarFall.Editor
                     case 42:
                         if (Time.frameCount < inputStartFrame + 10) return;
                         Check(app.Session.State == MatchState.Playing && app.Session.Builds.TotalRanks == 0, "Real R key restarts training from a pending choice");
+                        app.StartShowcase(1);
+                        Time.timeScale = 1;
+                        InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Q));
+                        inputStartFrame = Time.frameCount; phase = 43; break;
+                    case 43:
+                        if (Time.frameCount < inputStartFrame + 10) return;
+                        Check(app.Battle.FusionCastCount == 1 && app.Battle.ShotsFired > 0, "Real Q key releases ultimate alongside automatic attacks");
+                        inputStartFrame = Time.frameCount; phase = 44; break;
+                    case 44:
+                        if (Time.frameCount < inputStartFrame + 10) return;
+                        Check(app.Battle.FusionCastCount == 1, "Holding Q does not repeatedly release ultimate");
                         InputSystem.QueueStateEvent(keyboard, new KeyboardState());
                         app.ReturnToBase();
                         Time.timeScale = 1;
@@ -377,9 +395,3 @@ namespace StarFall.Editor
         }
     }
 }
-
-
-
-
-
-

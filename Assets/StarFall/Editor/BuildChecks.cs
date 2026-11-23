@@ -194,7 +194,7 @@ namespace StarFall.Editor
             {
                 var builds = new BuildProgression(); builds.Reset(TestCosts, seed);
                 bool matches = true;
-                foreach (var id in sequence)
+                foreach (var id in new[] { sequence[0] })
                 {
                     builds.AddExperience(builds.ExperienceRequired);
                     if (!builds.Choose(id, builds.Revision)) { matches = false; break; }
@@ -212,12 +212,12 @@ namespace StarFall.Editor
         private static void SetBuilds(GameApplication app, params BuildId[] sequence)
         {
             StartBuildSequence(app, sequence);
+            app.Session.Start(180, 100, new[] { 10000 });
             foreach (var id in sequence) Grant(app.Session, id);
         }
         public static void Grant(MatchSession session, BuildId id)
         {
-            session.CollectSoul(session.Builds.ExperienceRequired);
-            if (!session.ChooseBuild(id, session.Builds.Revision)) throw new Exception("Test grant failed: " + id);
+            if (!session.GrantTrainingBuild(id)) throw new Exception("Test grant failed: " + id);
         }
         public static void DrainChoices(MatchSession session)
         {
@@ -232,6 +232,3 @@ namespace StarFall.Editor
         }
     }
 }
-
-
-

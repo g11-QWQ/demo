@@ -86,6 +86,12 @@ namespace StarFall
             Builds.AddExperience(Builds.ExperienceRequired);
             if (Builds.PendingChoices > 0) SetState(MatchState.ChoosingBuild);
         }
+        public bool GrantTrainingBuild(BuildId id)
+        {
+            if (State != MatchState.Playing || !Builds.GrantForTraining(id)) return false;
+            if (id == BuildId.Vitality) { MaxHealth += 20; Health = Math.Min(MaxHealth, Health + 20); }
+            return true;
+        }
 
         public float ConsumeSoulFire()
         {

@@ -11,6 +11,7 @@ namespace StarFall
         private readonly List<DamageLabel> damageLabels = new List<DamageLabel>();
         private readonly Stack<Text> damagePool = new Stack<Text>();
         private int damageSerial;
+        private bool damageLayoutDirty;
         public int DamageNumberCount => damageLabels.Count;
         public int LastDamageNumber { get; private set; }
         public Color LastDamageColor { get; private set; }
@@ -37,7 +38,7 @@ namespace StarFall
             int slot = ++damageSerial % 21;
             damageLabels.Add(new DamageLabel { Text = text, Position = position, Color = LastDamageColor,
                 Side = (slot % 7 - 3) * 19, Lift = (slot / 7) * 19 });
-            LayoutDamageNumbers();
+            damageLayoutDirty = true;
         }
         public void StepDamageNumbers(float delta)
         {
@@ -46,11 +47,13 @@ namespace StarFall
                 var label = damageLabels[i]; label.Age += delta;
                 if (label.Age >= 0.9f) { label.Text.gameObject.SetActive(false); damagePool.Push(label.Text); damageLabels.RemoveAt(i); }
             }
-            LayoutDamageNumbers();
+            damageLayoutDirty = true;
         }
         private void LayoutDamageNumbers()
         {
             if (damageLayer == null || app == null) return;
+            if (!damageLayoutDirty) return;
+            damageLayoutDirty = false;
             var camera = Camera.main; if (camera == null) return;
             bool visible = app.Session.State == MatchState.Playing || app.Session.State == MatchState.Paused || app.Session.State == MatchState.ClaimingReward || app.Session.State == MatchState.ChoosingBuild;
             damageLayer.gameObject.SetActive(visible);

@@ -16,7 +16,7 @@ namespace StarFall.Editor
             config.enemySpeed = config.miniBossSpeed = config.finalBossSpeed = 0;
             config.initialSpawnInterval = config.finalSpawnInterval = 0.1f;
             config.bossAttackInterval = 0.5f; config.bossWarningTime = 1;
-            config.finalBossHealth = 6;
+            config.finalBossHealth = 6; config.chestInteractionRadius = 2; config.enableEnemyRoles = false;
             config.levelExperience = new[] { 100000 };
             SetConfig(battle, config);
             try
@@ -105,4 +105,3 @@ namespace StarFall.Editor
         }
     }
 }
-

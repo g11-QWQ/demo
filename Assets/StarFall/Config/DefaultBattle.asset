@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85502d7b62e7cf4439f68de3d9faf777, type: 3}
   m_Name: DefaultBattle
   m_EditorClassIdentifier: Assembly-CSharp::StarFall.BattleConfig
-  duration: 180
+  duration: 480
   arenaSize: {x: 42, y: 26}
   resultDisplaySeconds: 4
   character: {fileID: 11400000, guid: 82d53281fb88cbb428dcb5c9c0bfa8ab, type: 2}
@@ -22,7 +22,7 @@ MonoBehaviour:
   hurtGraceSeconds: 0.65
   soulTravelSpeed: 9
   enemySoulValue: 1
-  levelExperience: 03000000040000000500000006000000080000000a0000000c000000
+  levelExperience: 06000000080000000c0000000e0000001000000018000000200000002c000000400000005800000078000000a0000000d20000000e010000
   enemyHealth: 24
   enemyElementResistancePercent: 0
   enemySpeed: 2.4
@@ -30,8 +30,8 @@ MonoBehaviour:
   contactDamage: 10
   contactElement: 0
   contactCooldown: 1
-  initialSpawnInterval: 1.2
-  finalSpawnInterval: 0.45
+  initialSpawnInterval: 1
+  finalSpawnInterval: 0.4
   maxEnemies: 30
   enableObstacles: 1
   obstacles:
@@ -40,15 +40,15 @@ MonoBehaviour:
   - {x: -6, y: 7, z: 5, w: 2}
   - {x: 9, y: -7, z: 4, w: 2}
   enableBossEncounters: 1
-  miniBossTime: 60
-  miniBossHealth: 120
+  miniBossTime: 240
+  miniBossHealth: 420
   miniBossSpeed: 1.9
   miniBossRadius: 1
-  miniBossSoulValue: 6
-  finalBossHealth: 360
+  miniBossSoulValue: 30
+  finalBossHealth: 1500
   finalBossSpeed: 1.4
   finalBossRadius: 1.5
   finalBossFireResistance: 20
   bossAttackInterval: 5
   bossWarningTime: 1.4
-  chestInteractionRadius: 2
+  chestInteractionRadius: 6

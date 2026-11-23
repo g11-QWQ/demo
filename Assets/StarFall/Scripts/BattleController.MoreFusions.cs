@@ -79,7 +79,7 @@ namespace StarFall
         }
         private EnemyController NearestFusionEnemy(Fusion effect, float radius)
         {
-            EnemyController result = null; float best = radius * radius;
+            EnemyController result = null; float best = radius * radius * effect.AreaScale * effect.AreaScale;
             foreach (var enemy in enemies)
             {
                 float d = (enemy.Position - effect.Position).sqrMagnitude;
@@ -94,7 +94,7 @@ namespace StarFall
             foreach (var enemy in enemies.ToArray())
             {
                 var offset = enemy.Position - effect.Position; offset.y = 0;
-                if (Mathf.Abs(Vector3.Dot(offset, effect.Direction)) > 1.3f + enemy.Radius || !InFusionRange(effect, enemy, 4.3f)) continue;
+                if (Mathf.Abs(Vector3.Dot(offset, effect.Direction)) > 1.3f * effect.AreaScale + enemy.Radius || !InFusionRange(effect, enemy, 4.3f)) continue;
                 FusionDamage(effect, enemy, effect.Main == DamageElement.Lightning ? 14 : 10, DamageElement.Lightning);
                 FusionDamage(effect, enemy, 5, DamageElement.Wind);
                 PushFusion(enemy, effect.Direction, 0.45f);
@@ -125,7 +125,7 @@ namespace StarFall
                 var offset = enemy.Position - effect.Position; offset.y = 0;
                 float along = Vector3.Dot(offset, effect.Direction);
                 bool primary = valid && enemy == effect.Target;
-                if (!primary && (along < -0.6f || along > 8 || Vector3.Cross(offset, effect.Direction).magnitude > 0.65f + enemy.Radius)) continue;
+                if (!primary && (along < -0.6f * effect.AreaScale || along > 8 * effect.AreaScale || Vector3.Cross(offset, effect.Direction).magnitude > 0.65f * effect.AreaScale + enemy.Radius)) continue;
                 if (!navigation.ClearLine(effect.Position, enemy.Position, 0)) continue;
                 FusionDamage(effect, enemy, primary ? (effect.Main == DamageElement.Earth ? 64 : 48) : 18, DamageElement.Earth);
                 FusionDamage(effect, enemy, primary ? (effect.Main == DamageElement.Lightning ? 30 : 18) : 8, DamageElement.Lightning);

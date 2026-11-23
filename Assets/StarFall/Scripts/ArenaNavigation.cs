@@ -33,6 +33,7 @@ namespace StarFall
 
         public Vector3 Move(Vector3 start, Vector3 displacement, float radius)
         {
+            if (!IsFree(start, radius)) start = ClosestFree(start, radius);
             int steps = Mathf.Max(1, Mathf.CeilToInt(displacement.magnitude / 0.2f));
             var step = displacement / steps;
             for (int i = 0; i < steps; i++)
@@ -74,7 +75,9 @@ namespace StarFall
             }
             var bounds = Rect.MinMaxRect(-size.x / 2 + radius, -size.y / 2 + radius, size.x / 2 - radius, size.y / 2 - radius);
             if (Intersect(start, end, bounds, out _, out float exit) && exit < 1) time = Mathf.Min(time, exit);
-            if (!bounds.Contains(new Vector2(start.x, start.z))) time = 0;
+            // Rect.Contains excludes its maximum edges. Actors spawned exactly on the
+            // right/top inset boundary must still be able to move back into the arena.
+            if (start.x < bounds.xMin || start.x > bounds.xMax || start.z < bounds.yMin || start.z > bounds.yMax) time = 0;
             return time <= 1;
         }
 

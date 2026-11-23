@@ -5,7 +5,10 @@ namespace StarFall
 {
     public sealed class Projectile : MonoBehaviour
     {
-        public sealed class Cast { public int Number; public bool ResonanceTriggered, ChargeCredited; public float ChargeValue; }
+        public sealed class Cast { public int Number; public bool ResonanceTriggered, ChargeCredited, LinkTriggered, ArtCredited; public float ChargeValue; }
+        public bool Derived, Heavy, Returning, OnReturn;
+        public int LinkEvolution;
+        public DamageElement SecondaryHit;
         public Cast SourceCast { get; set; }
         public DamageElement Resonance { get; set; }
         public int SpecialRank { get; set; }
@@ -16,6 +19,7 @@ namespace StarFall
         public readonly HashSet<EnemyController> Hits = new HashSet<EnemyController>();
         private Renderer[] originalRenderers;
         private LineRenderer accent;
+        private LineRenderer linkAccent;
         public Vector3 Position => transform.position;
         public Vector3 Direction { get; private set; }
         public float DistanceLeft { get; private set; }
@@ -34,10 +38,28 @@ namespace StarFall
             BurnBaseDamage = gem.element == DamageElement.Fire ? burnBaseDamage : 0;
             Speed = gem.projectileSpeed; Radius = gem.projectileRadius;
             Hits.Clear(); SpecialRank = SecondaryRank = PiercesLeft = 0; Resonance = DamageElement.Physical;
+            Derived = Heavy = Returning = OnReturn = false; LinkEvolution = 0;
+            SecondaryHit = DamageElement.Physical; if (linkAccent != null) linkAccent.enabled = false;
             SetVisual(gem.element);
         }
         public void AddBaseDamage(float value) => BaseDamage += value;
+        public void MakeLink(DamageElement element, float damage, float power, float speed)
+        { Element = element; BaseDamage = damage; Multiplier = 1; Efficiency = power; Speed = speed; BurnBaseDamage = element == DamageElement.Fire ? 2 : 0; SetVisual(element); }
+        public void TintLink(DamageElement secondary)
+        {
+            if (linkAccent == null)
+            {
+                var go = new GameObject("LinkRibbon"); go.transform.SetParent(transform, false);
+                linkAccent = go.AddComponent<LineRenderer>(); linkAccent.useWorldSpace = false;
+                linkAccent.sharedMaterial = originalRenderers[0].sharedMaterial;
+            }
+            var color = ElementCatalog.ColorFor(secondary); var block = new MaterialPropertyBlock(); block.SetColor("_BaseColor", color);
+            linkAccent.SetPropertyBlock(block); linkAccent.enabled = true; linkAccent.widthMultiplier = 0.055f; linkAccent.positionCount = 12;
+            for (int i = 0; i < 12; i++) linkAccent.SetPosition(i, new Vector3(Mathf.Sin(i * 0.8f) * 0.28f, 0.1f, -i * 0.12f));
+        }
         public void Attenuate() => Multiplier *= 0.75f;
+        public void BeginReturn(Vector3 target) { OnReturn = true; Hits.Clear(); DistanceLeft = 24; AimReturn(target); }
+        public void AimReturn(Vector3 target) { var d = target - Position; d.y = 0; if (d.magnitude < 0.7f) DistanceLeft = 0; else Direction = d.normalized; }
         private void SetVisual(DamageElement element)
         {
             if (originalRenderers == null) originalRenderers = GetComponentsInChildren<Renderer>();

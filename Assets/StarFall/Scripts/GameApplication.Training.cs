@@ -6,6 +6,7 @@ namespace StarFall
     public sealed partial class GameApplication
     {
         public bool TestMode { get; private set; }
+        private bool fullTraining;
         private DamageElement testElement = DamageElement.Fire;
         public DamageElement TestResonance { get; set; }
         public void SelectGem(int index)
@@ -16,11 +17,18 @@ namespace StarFall
         public void StartTraining(bool bossOnly = false)
         {
             if (SaveBlocked || SettingsOpen || !Progress.Ready || (Session.State != MatchState.HomeBase && Session.State != MatchState.MainMenu)) return;
-            TestMode = true; testElement = (DamageElement)(Progress.Snapshot.gemIndex + 1);
+            fullTraining = false; TestMode = true; testElement = (DamageElement)(Progress.Snapshot.gemIndex + 1);
             UI.CloseWorkshop();
             RestartTraining();
             Session.Invulnerable = true;
             if (bossOnly) Battle.TrainingBoss();
+        }
+        public void StartGrowthTraining()
+        {
+            if (SaveBlocked || SettingsOpen || !Progress.Ready || (Session.State != MatchState.HomeBase && Session.State != MatchState.MainMenu)) return;
+            fullTraining = true; TestMode = true; TestResonance = DamageElement.Physical;
+            testElement = (DamageElement)(Progress.Snapshot.gemIndex + 1);
+            UI.CloseWorkshop(); RestartTraining(); Session.Invulnerable = true;
         }
         public void RestartTraining(int gemIndex = -1)
         {
@@ -28,7 +36,7 @@ namespace StarFall
             bool invulnerable = Session.Invulnerable;
             if (gemIndex >= 0) testElement = (DamageElement)(gemIndex + 1);
             if (!ElementCatalog.Compatible(testElement, TestResonance)) TestResonance = DamageElement.Physical;
-            Battle.Begin(null, testElement, true);
+            Battle.Begin(null, testElement, true, fullTraining);
             Session.Invulnerable = invulnerable;
             if (TestResonance != DamageElement.Physical)
                 Session.Builds.GrantForTraining((BuildId)((int)BuildId.ResFire + (int)TestResonance - 1));
@@ -38,7 +46,7 @@ namespace StarFall
         {
             if (index < 0 || index >= FusionCatalog.Primary.Length) return;
             if (SaveBlocked || SettingsOpen || (!TestMode && Session.State != MatchState.MainMenu && Session.State != MatchState.HomeBase)) return;
-            TestMode = true;
+            fullTraining = false; TestMode = true;
             TestResonance = FusionCatalog.Secondary[index];
             UI.CloseWorkshop(); RestartTraining((int)FusionCatalog.Primary[index] - 1); Session.Invulnerable = true;
             Battle.TrainingTargets(); Battle.TrainingChargeFusion();
@@ -71,4 +79,3 @@ namespace StarFall
         }
     }
 }
-

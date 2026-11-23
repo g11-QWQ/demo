@@ -3,9 +3,23 @@ using UnityEngine;
 namespace StarFall
 {
     public enum EnemyKind { Normal, MiniBoss, FinalBoss }
+    public enum EnemyRole { Melee, Charger, Caster, Elite }
     public sealed class EnemyController : MonoBehaviour
     {
         public EnemyKind Kind { get; private set; }
+        public EnemyRole Role { get; private set; }
+        public float RoleAttackRemaining;
+        private float roleAge;
+        public int SoulBonus { get; private set; }
+        public void ConfigureWave(EnemyRole role, float healthScale, int soulBonus)
+        {
+            Role = role; MaxHealth = Health = MaxHealth * healthScale * (role == EnemyRole.Elite ? 3 : 1);
+            SoulBonus = soulBonus + (role == EnemyRole.Elite ? 7 : 0);
+            RoleAttackRemaining = 3; roleAge = 0;
+            if (role == EnemyRole.Caster) Speed *= 0.7f;
+            if (role == EnemyRole.Elite) { transform.localScale *= 1.3f; Radius *= 1.3f; }
+            SetBurnVisual(false);
+        }
         public float Radius { get; private set; }
         public float Speed { get; private set; }
         public float Resistance { get; private set; }
@@ -51,6 +65,7 @@ namespace StarFall
             transform.position = position;
             PreviousPosition = position;
             Kind = kind;
+            Role = EnemyRole.Melee; SoulBonus = 0; roleAge = 0; RoleAttackRemaining = 3;
             Radius = kind == EnemyKind.Normal ? config.enemyRadius : kind == EnemyKind.MiniBoss ? config.miniBossRadius : config.finalBossRadius;
             Speed = kind == EnemyKind.Normal ? config.enemySpeed : kind == EnemyKind.MiniBoss ? config.miniBossSpeed : config.finalBossSpeed;
             Resistance = kind == EnemyKind.FinalBoss ? config.finalBossFireResistance : config.enemyElementResistancePercent;
@@ -66,11 +81,14 @@ namespace StarFall
         public void Step(float delta, Vector3 target, BattleConfig config, ArenaNavigation navigation = null)
         {
             PreviousPosition = Position;
+            roleAge += delta;
             contactRemaining = Mathf.Max(0, contactRemaining - delta);
             SlowRemaining = Mathf.Max(0, SlowRemaining - delta); RootRemaining = Mathf.Max(0, RootRemaining - delta);
             rootImmunity = Mathf.Max(0, rootImmunity - delta); markRemaining -= delta;
             if (markRemaining <= 0) EarthMarks = 0;
             float movementSpeed = RootRemaining > 0 ? 0 : Speed * (SlowRemaining > 0 ? 1 - SlowStrength : 1);
+            if (Role == EnemyRole.Charger) movementSpeed *= roleAge % 4 < 3 ? 0.7f : 2.6f;
+            if (Role == EnemyRole.Caster && (Position - target).sqrMagnitude < 64) movementSpeed = 0;
             UpdateStatusRings();
             target.y = Position.y;
             transform.position = navigation == null ? Vector3.MoveTowards(Position, target, movementSpeed * delta) : navigation.Move(Position, navigation.Direction(Position, target, Radius) * movementSpeed * delta, Radius);
@@ -132,7 +150,8 @@ namespace StarFall
                 properties = new MaterialPropertyBlock();
                 baseColor = body.sharedMaterial.GetColor("_BaseColor");
             }
-            properties.SetColor("_BaseColor", Kind == EnemyKind.MiniBoss ? new Color(1, 0.68f, 0.12f) : Kind == EnemyKind.FinalBoss ? new Color(0.65f, 0.15f, 0.9f) : baseColor);
+            properties.SetColor("_BaseColor", Kind == EnemyKind.MiniBoss ? new Color(1, 0.68f, 0.12f) : Kind == EnemyKind.FinalBoss ? new Color(0.65f, 0.15f, 0.9f)
+                : Role == EnemyRole.Elite ? new Color(1, 0.85f, 0.25f) : Role == EnemyRole.Caster ? new Color(0.25f, 0.5f, 0.95f) : Role == EnemyRole.Charger ? new Color(1, 0.45f, 0.22f) : baseColor);
             body.SetPropertyBlock(properties);
             UpdateStatusRings();
         }
@@ -155,4 +174,3 @@ namespace StarFall
         }
     }
 }
-
